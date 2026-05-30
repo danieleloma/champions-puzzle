@@ -1,0 +1,160 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 5%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 98%;
+    --primary: 358 97% 47%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 14%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 60%;
+    --border: 0 0% 14%;
+    --radius: 0.75rem;
+  }
+
+  * {
+    @apply border-border;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    @apply bg-arsenal-black;
+    overscroll-behavior: none;
+  }
+
+  body {
+    @apply bg-arsenal-black text-foreground min-h-screen;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* ─── Typography scale ──────────────────────────────────────────────────────
+ *
+ *  Fonts
+ *  ─────
+ *  Boldonse (var(--font-boldonse))   → display / all headings
+ *  Geist Sans (var(--font-geist-sans)) → body / UI text
+ *  Geist Mono (var(--font-geist-mono)) → scores / code / timestamps
+ *
+ *  Scale
+ *  ─────
+ *  type-hero      64px   Boldonse   full-bleed hero headlines
+ *  type-title     48px   Boldonse   page titles
+ *  type-heading   32px   Boldonse   section headers
+ *  type-subhead   24px   Boldonse   card titles, modal headers
+ *  type-label     16px   Boldonse   buttons, badges, nav items
+ *
+ *  type-body-lg   18px   Geist Sans lead / intro paragraphs
+ *  type-body      16px   Geist Sans standard body copy
+ *  type-body-sm   14px   Geist Sans secondary text, captions
+ *  type-body-xs   12px   Geist Sans timestamps, fine print
+ *
+ *  type-mono      14px   Geist Mono scores, timers, code
+ *  type-mono-sm   12px   Geist Mono small data labels
+ *
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+@layer components {
+  /* Boldonse — display */
+  .type-hero {
+    font-family: var(--font-boldonse), sans-serif;
+    font-size: 64px;
+    line-height: 1.05;
+    letter-spacing: -0.05em;
+    font-weight: 400;
+  }
+  .type-title {
+    font-family: var(--font-boldonse), sans-serif;
+    font-size: 48px;
+    line-height: 1.1;
+    letter-spacing: -0.05em;
+    font-weight: 400;
+  }
+  .type-heading {
+    font-family: var(--font-boldonse), sans-serif;
+    font-size: 32px;
+    line-height: 1.15;
+    letter-spacing: -0.04em;
+    font-weight: 400;
+  }
+  .type-subhead {
+    font-family: var(--font-boldonse), sans-serif;
+    font-size: 24px;
+    line-height: 1.2;
+    letter-spacing: -0.03em;
+    font-weight: 400;
+  }
+  .type-label {
+    font-family: var(--font-boldonse), sans-serif;
+    font-size: 16px;
+    line-height: 1.375;
+    letter-spacing: -0.027em;
+    font-weight: 400;
+  }
+
+  /* Geist Sans — body */
+  .type-body-lg {
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
+    font-size: 18px;
+    line-height: 1.6;
+    letter-spacing: -0.01em;
+  }
+  .type-body {
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    letter-spacing: -0.01em;
+  }
+  .type-body-sm {
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    letter-spacing: -0.005em;
+  }
+  .type-body-xs {
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  /* Geist Mono — scores / data / code */
+  .type-mono {
+    font-family: var(--font-geist-mono), monospace;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .type-mono-sm {
+    font-family: var(--font-geist-mono), monospace;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+}
