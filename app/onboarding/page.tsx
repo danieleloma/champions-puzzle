@@ -31,8 +31,10 @@ import { getOrCreateDeviceId, generateAvatarColor } from "@/lib/device-identity"
 //    whistle   left=864  top=791  container=412  img=292  rot=−49.06°
 // ─────────────────────────────────────────────────────────────────────────────
 
-const FRAME_W = 1440;
-const FRAME_H = 1024;
+const FRAME_W  = 1440;
+const FRAME_H  = 1024;
+const MOBILE_W =  440;
+const MOBILE_H =  926;
 
 const usernameSchema = z
   .string()
@@ -83,10 +85,16 @@ export default function OnboardingPage() {
   const [error,        setError]        = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [scale,        setScale]        = useState(1);
+  const [mobileScale,  setMobileScale]  = useState(1);
+  const [isMobile,     setIsMobile]     = useState(false);
 
   useEffect(() => {
-    const compute = () =>
+    const compute = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
       setScale(Math.min(window.innerWidth / FRAME_W, window.innerHeight / FRAME_H));
+      setMobileScale(Math.min(window.innerWidth / MOBILE_W, window.innerHeight / MOBILE_H));
+    };
     compute();
     window.addEventListener("resize", compute);
     return () => window.removeEventListener("resize", compute);
@@ -131,6 +139,103 @@ export default function OnboardingPage() {
     }
   }
 
+  // ── Mobile layout — Figma node 15:114 (440 × 926 iPhone 13 Mini) ──────────
+  //
+  //  Icon pile positions — all left values are the container left EDGE after
+  //  resolving Figma's -translate-x-1/2 + calc(N%±offset) at frame W=440.
+  //
+  //  Left group  (−11.28°) container 235 img 200: stadium(-55,756) gloves(-82,827) ball(3,834) board(91,827)
+  //  Right large (+16.12°) container 248 img 200: flag(159,753) goal-post(68,753)
+  //  Right small (+16.12°) container 218 img 176: boot(245,788) cup(289,770) captain-band(231,870)
+  //  Misc: jersey(203,853,+4.71°,cont167,img155) whistle(290,842,−49.06°,cont219,img155)
+  // ───────────────────────────────────────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <div
+        className="fixed inset-0 bg-[#0f0f10] overflow-hidden flex items-center justify-center"
+      >
+        {/* Scaled 440 × 926 Figma frame */}
+        <div
+          style={{
+            width:           MOBILE_W,
+            height:          MOBILE_H,
+            flexShrink:      0,
+            position:        "relative",
+            overflow:        "hidden",
+            transform:       `scale(${mobileScale})`,
+            transformOrigin: "center center",
+          }}
+        >
+          {/* Form — Figma: left:16, top:84, gap:32 */}
+          <form
+            onSubmit={handleSubmit}
+            style={{
+              position:      "absolute",
+              left:          16,
+              top:           84,
+              width:         407,
+              display:       "flex",
+              flexDirection: "column",
+              gap:           32,
+            }}
+          >
+            <h1
+              style={{
+                fontFamily:    "var(--font-boldonse), sans-serif",
+                fontSize:      20,
+                lineHeight:    "normal",
+                letterSpacing: "-1px",
+                color:         "#fff",
+                margin:        0,
+              }}
+            >
+              Create username
+            </h1>
+            <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+              <Input
+                placeholder="e.g MajeekDaniel"
+                value={username}
+                onChange={(e) => { setUsername(e.target.value); setError(""); }}
+                maxLength={20}
+                autoFocus
+                helperText={`${charCount}/20 · Letters, numbers, underscores only`}
+                error={error || undefined}
+              />
+              <Button type="submit" variant="primary" fullWidth disabled={isSubmitting || charCount < 3}>
+                {isSubmitting ? "Saving…" : "LET'S PLAY →"}
+              </Button>
+            </div>
+          </form>
+
+          {/* Icon pile — left group −11.28°, container 235, img 200 */}
+          <FloatIcon name="stadium"      deg={-11.28} left={-55} top={756}   containerSize={235.248} imgSize={200} />
+          <FloatIcon name="gloves"       deg={-11.28} left={-82} top={827}   containerSize={235.248} imgSize={200} />
+          <FloatIcon name="ball"         deg={-11.28} left={3}   top={834}   containerSize={235.248} imgSize={200} />
+          <FloatIcon name="board"        deg={-11.28} left={91}  top={827}   containerSize={235.248} imgSize={200} />
+
+          {/* Right group large +16.12°, container 248, img 200 */}
+          <FloatIcon name="flag"         deg={16.12}  left={159} top={753}   containerSize={247.66}  imgSize={200} />
+          <FloatIcon name="goal-post"    deg={16.12}  left={68}  top={753}   containerSize={247.66}  imgSize={200} />
+
+          {/* Right group small +16.12°, container 218, img 176 */}
+          <FloatIcon name="boot"         deg={16.12}  left={245} top={788}   containerSize={218.067} imgSize={176} />
+          <FloatIcon name="cup"          deg={16.12}  left={289} top={770}   containerSize={218.067} imgSize={176} />
+          <FloatIcon name="captain-band" deg={16.12}  left={231} top={870}   containerSize={218.067} imgSize={176} />
+
+          {/* Misc */}
+          <FloatIcon name="jersey"  deg={4.71}   left={203} top={853} containerSize={167.656} imgSize={155} />
+          <FloatIcon name="whistle" deg={-49.06} left={290} top={842} containerSize={219.243} imgSize={155} />
+
+          {/* Home indicator */}
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 21, display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 8 }}>
+            <div style={{ width: 134, height: 5, borderRadius: 100, background: "#fff" }} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Desktop layout ──────────────────────────────────────────────────────────
   return (
     <div className="fixed inset-0 overflow-hidden bg-[#0f0f10] flex items-center justify-center">
 

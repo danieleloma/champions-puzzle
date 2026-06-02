@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { playClick } from "@/lib/sounds";
 
 // ── Figma node 28:1715 "BadgeContainerState" ─────────────────────────────────
 //
@@ -76,7 +77,7 @@ export function BadgeContainer({
         return (
           <div key={item.value} className="flex items-center shrink-0" style={{ gap: 9 }}>
             <button
-              onClick={() => onChange?.(item.value)}
+              onClick={() => { playClick(); onChange?.(item.value); }}
               className={cn(
                 "flex items-center justify-center gap-1.5 shrink-0 overflow-hidden",
                 "h-8 px-3 rounded-[32px]",

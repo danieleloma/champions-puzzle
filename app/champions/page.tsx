@@ -1,19 +1,21 @@
 "use client";
 
-// ── Figma node 27:816 "Choose your champion" — 1440 × 1024 px ─────────────────
+// ── Figma node 27:816 "Choose your champion" — 1440 × 1024 px (desktop) ──────
+//  ── Figma node 9:619  "Choose your champion" — 440 × 926 px  (mobile)  ──────
 //
-//  Layout (same scale-to-fit frame as /onboarding):
-//  • Nav bar — left: CHAMPIONS PUZZLE wordmark  right: user badge + Ranks badge
+//  Desktop layout (scaled frame):
+//  • Nav bar — CHAMPIONS PUZZLE wordmark (left) + user badge + Ranks (right)
 //    Figma: left 200  top 57  width 1040  justify-between
-//  • Content — width 481  cx=720  top 200  gap 41 between header and cards
-//    Header: heading (Boldonse 20px) + league filter (BadgeContainer)
-//    Cards:  2-column CSS grid  gap 16  each card height 260px
+//  • Content — width 684  cx=720  top 200  flex-col gap 41
+//    Header: heading (Boldonse 20px) + league filter  gap 16
+//    Cards:  3-column CSS grid  gap 16  each card 196×260px
 //
-//  Club cards (Arsenal & Barcelona from Figma; Inter/Bayern/PSG follow same pattern):
-//  • Background: 3-stop gradient (sky tint → club colour → dark base)
-//  • Floating icons: positioned with `right` + `top` from Figma, clipped by overflow:hidden
-//  • Club badge: left 29.54  top 27.54  size 146 (Icon3D for arsenal/barcelona, letter for rest)
-//  • Bottom vignette + footer text (club name, league) + PLAY button
+//  Mobile layout (responsive scroll):
+//  • Figma: left 16  top 84  width 407  flex-col gap 41
+//  • Header section  flex-col gap 32:
+//      Nav row: user badge (left) + Ranks badge (right)
+//      Title block  flex-col gap 16: heading + league pills
+//  • Cards: 2-column CSS grid  gap 16  cards 196×260px
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, useEffect } from "react";
@@ -41,11 +43,14 @@ export default function ChampionsPage() {
   const user   = useUserStore((s) => s.user);
 
   const [scale,        setScale]        = useState(1);
+  const [isMobile,     setIsMobile]     = useState(false);
   const [activeLeague, setActiveLeague] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    const compute = () =>
+    const compute = () => {
+      setIsMobile(window.innerWidth < 768);
       setScale(Math.min(window.innerWidth / FRAME_W, window.innerHeight / FRAME_H));
+    };
     compute();
     window.addEventListener("resize", compute);
     return () => window.removeEventListener("resize", compute);
@@ -59,6 +64,78 @@ export default function ChampionsPage() {
     ? CHAMPIONS.filter((c) => c.leagueKey === activeLeague)
     : CHAMPIONS;
 
+  // ── Mobile layout — Figma node 9:619 (440 × 926) ──────────────────────────
+  // left:16  top:84  width:407  flex-col  gap:41
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-[#0f0f10] overflow-y-auto">
+        <div style={{ padding: "84px 16px 40px", display: "flex", flexDirection: "column", gap: 41 }}>
+
+          {/* Header section — flex-col  gap:32 */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+
+            {/* Nav row — user badge (left)  Ranks (right) */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              {user && (
+                <Badge
+                  variant="user-info"
+                  username={user.username}
+                  avatarColor={user.avatar_color}
+                  xp={user.xp}
+                />
+              )}
+              <Link href="/leaderboard">
+                <Badge variant="featured" label="Ranks" />
+              </Link>
+            </div>
+
+            {/* Title + league pills — flex-col  gap:16 */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <h1
+                style={{
+                  fontFamily:    "var(--font-boldonse), sans-serif",
+                  fontSize:      20,
+                  lineHeight:    "normal",
+                  letterSpacing: "-1px",
+                  color:         "#fff",
+                  margin:        0,
+                }}
+              >
+                Choose your champion
+              </h1>
+              <BadgeContainer
+                value={activeLeague}
+                onChange={handleLeagueChange}
+                items={LEAGUES.map((l) => ({ value: l.value, label: l.label }))}
+              />
+            </div>
+          </div>
+
+          {/* Cards — 2-col grid  gap:16  each card 196×260px */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            {visible.map((c) => (
+              <ClubCard
+                key={c.id}
+                club={c.club}
+                league={c.league}
+                imageSrc={c.cardImageSrc}
+                skyColor={c.skyColor}
+                gradFrom={c.gradFrom}
+                gradTo={c.gradTo}
+                badgeIcon={c.badgeIcon}
+                badgeLetter={c.badgeLetter}
+                floatIcons={c.floatIcons}
+                onPlay={() => router.push(`/club/${c.id}`)}
+                className="w-full"
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Desktop layout ──────────────────────────────────────────────────────────
   return (
     <div className="fixed inset-0 overflow-hidden bg-[#0f0f10] flex items-center justify-center">
 
@@ -81,8 +158,8 @@ export default function ChampionsPage() {
           </div>
         </div>
 
-        {/* ── Content — cx=720  top=200  w=481  flex-col  gap=41 ── */}
-        <div style={{ position: "absolute", left: "50%", top: 200, transform: "translateX(-50%)", width: 481, display: "flex", flexDirection: "column", gap: 41 }}>
+        {/* ── Content — cx=720  top=200  w=684  flex-col  gap=41 ── */}
+        <div style={{ position: "absolute", left: "50%", top: 200, transform: "translateX(-50%)", width: 684, display: "flex", flexDirection: "column", gap: 41 }}>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <h1 style={{ fontFamily: "var(--font-boldonse), sans-serif", fontSize: 20, lineHeight: "normal", letterSpacing: "-1px", color: "#fff", margin: 0 }}>
@@ -95,7 +172,7 @@ export default function ChampionsPage() {
             />
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 196px)", gap: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 196px)", gap: 16 }}>
             {visible.map((c) => (
               <ClubCard
                 key={c.id}

@@ -28,9 +28,11 @@ import { DIFFICULTY_CONFIG, type Puzzle } from "@/types/puzzle";
 import { formatTime } from "@/lib/score-calculator";
 import { getCompletionPercent } from "@/lib/puzzle-engine";
 
-const FRAME_W = 1440;
-const FRAME_H = 1024;
-const BOARD_SIZE = 408; // Figma: size-[408px]
+const FRAME_W    = 1440;
+const FRAME_H    = 1024;
+const MOBILE_W   =  440;
+const MOBILE_H   =  926;
+const BOARD_SIZE =  408; // Figma: size-[408px]
 
 // ── Icon SVGs ─────────────────────────────────────────────────────────────────
 
@@ -148,10 +150,17 @@ export default function PlayPage() {
   useTimer();
 
   // Scale frame to viewport
-  const [scale, setScale] = useState(1);
+  const [scale,       setScale]       = useState(1);
+  const [mobileScale, setMobileScale] = useState(1);
+  const [isMobile,    setIsMobile]    = useState(false);
   useEffect(() => {
-    const compute = () =>
-      setScale(Math.min(window.innerWidth / FRAME_W, window.innerHeight / FRAME_H));
+    const compute = () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      setIsMobile(w < 768);
+      setScale(Math.min(w / FRAME_W, h / FRAME_H));
+      setMobileScale(Math.min(w / MOBILE_W, h / MOBILE_H));
+    };
     compute();
     window.addEventListener("resize", compute);
     return () => window.removeEventListener("resize", compute);
@@ -210,6 +219,168 @@ export default function PlayPage() {
 
   if (!puzzle) return null;
 
+  // ── Mobile layout — Figma node 21:341 (440 × 926 iPhone 13 Mini) ──────────
+  //
+  //  Content container: left:16 top:84 width:408 flex-col gap:41
+  //    └─ Section 1 (flex-col gap:56):
+  //         nav row  — back (52×32) + [eye (32×32), hint badge]
+  //         info row — [title Boldonse16 + difficulty cfg.color] / [moves Geist24 + timer GeistMono48 h:56 w:109]
+  //    └─ PuzzleBoard 408×408
+  //    └─ Progress bar (labels 16px / track h:12 #252627 / fill #fcff3f)
+  //    └─ RESTART (bg #252627 / rounded-1000 / Boldonse 16px #929498)
+  // ───────────────────────────────────────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <div className="fixed inset-0 bg-[#0f0f10] overflow-hidden flex items-center justify-center">
+
+        {/* Scaled 440 × 926 Figma frame */}
+        <div
+          style={{
+            width:           MOBILE_W,
+            height:          MOBILE_H,
+            flexShrink:      0,
+            position:        "relative",
+            overflow:        "hidden",
+            transform:       `scale(${mobileScale})`,
+            transformOrigin: "center center",
+          }}
+        >
+
+          {/* Content — left:16 top:84 width:408 flex-col gap:41 */}
+          <div
+            style={{
+              position:      "absolute",
+              left:          16,
+              top:           84,
+              width:         BOARD_SIZE,
+              display:       "flex",
+              flexDirection: "column",
+              gap:           41,
+            }}
+          >
+
+            {/* ── Section 1: nav + info (gap:56) ───────────────────────── */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 56 }}>
+
+              {/* Nav — back left, [eye + hint] right */}
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                <NavBadge width={52} onClick={() => router.back()}>
+                  <ArrowLeftIcon />
+                </NavBadge>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <NavBadge width={32} onClick={togglePreview}>
+                    <EyeIcon active={previewMode} />
+                  </NavBadge>
+                  <NavBadge
+                    onClick={noHints || hintsLeft === 0 ? undefined : useHint}
+                    disabled={isCompleted || noHints || hintsLeft === 0}
+                    style={{ paddingLeft: 4, paddingRight: 6, width: undefined }}
+                  >
+                    <LightbulbIcon />
+                    {!noHints && (
+                      <span style={{ fontFamily: "var(--font-geist-mono), monospace", fontWeight: 500, fontSize: 14, letterSpacing: "-0.7px", color: "#929498" }}>
+                        {hintsLeft}/{cfg.hintLimit}
+                      </span>
+                    )}
+                  </NavBadge>
+                </div>
+              </div>
+
+              {/* Info row — title/difficulty left · moves/timer right */}
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", width: "100%" }}>
+                <div style={{ flex: "1 0 0", minWidth: 0, display: "flex", flexDirection: "column" }}>
+                  <span style={{ fontFamily: "var(--font-boldonse), sans-serif", fontSize: 16, lineHeight: "normal", color: "#fff", wordBreak: "break-word", whiteSpace: "pre-wrap" }}>
+                    {puzzle.title}
+                  </span>
+                  <span style={{ fontFamily: "var(--font-geist-mono), monospace", fontWeight: 500, fontSize: 15, letterSpacing: "-0.75px", color: cfg.color }}>
+                    {cfg.label}
+                  </span>
+                </div>
+                <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+                  <span style={{ fontFamily: "var(--font-geist-sans), sans-serif", fontWeight: 500, fontSize: 24, letterSpacing: "-1.2px", color: "#929498", whiteSpace: "nowrap" }}>
+                    {moveCount} move{moveCount !== 1 ? "s" : ""}
+                  </span>
+                  <span style={{ fontFamily: "var(--font-geist-mono), monospace", fontWeight: 500, fontSize: 48, letterSpacing: "-2.4px", color: isStarted && !isCompleted ? "#fff" : "#929498", textAlign: "right", minWidth: 109, height: 56, display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+                    {formatTime(elapsedMs)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Puzzle board — 408×408 px ─────────────────────────────── */}
+            <PuzzleBoard imageUrl={puzzle.image_url} size={BOARD_SIZE} showProgress={false} />
+
+            {/* ── Progress bar ──────────────────────────────────────────── */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ fontFamily: "var(--font-geist-sans), sans-serif", fontWeight: 500, fontSize: 16, lineHeight: "24px" }}>
+                  <span style={{ color: pct > 0 ? "#fff" : "#73767b" }}>{pct}%</span>
+                  <span style={{ color: "#73767b" }}> complete</span>
+                </span>
+                <span style={{ fontFamily: "var(--font-geist-sans), sans-serif", fontWeight: 500, fontSize: 16, lineHeight: "24px", color: "#73767b", whiteSpace: "nowrap" }}>
+                  {placedCount}/{totalCount} tiles
+                </span>
+              </div>
+              <div
+                role="progressbar"
+                aria-valuenow={placedCount}
+                aria-valuemin={0}
+                aria-valuemax={totalCount}
+                style={{ height: 12, borderRadius: 10, backgroundColor: "#252627", overflow: "hidden" }}
+              >
+                <div style={{ height: "100%", width: `${pct}%`, backgroundColor: "#fcff3f", borderRadius: 12, transition: "width 300ms ease-out" }} />
+              </div>
+            </div>
+
+            {/* ── RESTART — bg #252627 / Boldonse 16px #929498 ────────────── */}
+            <button
+              onClick={resetGame}
+              style={{ width: BOARD_SIZE, backgroundColor: "#252627", borderRadius: 1000, padding: "24px 20px", fontFamily: "var(--font-boldonse), sans-serif", fontSize: 16, lineHeight: "22px", letterSpacing: "-0.43px", color: "#929498", border: "none", cursor: "pointer", textAlign: "center" }}
+            >
+              RESTART
+            </button>
+          </div>
+
+          {/* Home indicator */}
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 21, display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 8 }}>
+            <div style={{ width: 134, height: 5, borderRadius: 100, background: "#fff" }} />
+          </div>
+
+          {/* Hints-exhausted overlay — absolute within scaled frame */}
+          {isPaused && !isCompleted && (
+            <>
+              <div style={{ position: "absolute", inset: 0, backdropFilter: "blur(4px)", background: "rgba(22,22,22,0.9)", zIndex: 10 }} />
+              <div style={{ position: "absolute", left: 24, right: 24, top: "50%", transform: "translateY(-50%)", background: "#0d0d0d", borderRadius: 24, padding: "32px 24px", zIndex: 11, display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
+                <Icon3D name="red-card" size={120} loading="eager" />
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center", textAlign: "center" }}>
+                  <span style={{ fontFamily: "var(--font-boldonse), sans-serif", fontSize: 20, color: "#fff" }}>
+                    You&apos;re on your own
+                  </span>
+                  <span style={{ fontFamily: "var(--font-geist-sans), sans-serif", fontWeight: 500, fontSize: 15, lineHeight: "22px", color: "#929498" }}>
+                    You have exhausted your hints.<br />Don&apos;t worry, we paused the time
+                  </span>
+                </div>
+                <button
+                  onClick={resumeGame}
+                  style={{ width: "100%", background: "#252627", borderRadius: 1000, padding: "20px 16px", fontFamily: "var(--font-boldonse), sans-serif", fontSize: 16, color: "#fff", border: "none", cursor: "pointer" }}
+                >
+                  CONTINUE
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Victory — fixed z-50 so it covers the viewport above the scaled frame */}
+          {isCompleted && (
+            <VictoryScreen onReplay={resetGame} onHome={() => router.push("/champions")} />
+          )}
+
+        </div>
+      </div>
+    );
+  }
+
+  // ── Desktop layout ──────────────────────────────────────────────────────────
   return (
     <div className="fixed inset-0 overflow-hidden bg-[#0f0f10] flex items-center justify-center">
 
@@ -586,7 +757,7 @@ export default function PlayPage() {
         {isCompleted && (
           <VictoryScreen
             onReplay={resetGame}
-            onHome={() => router.push("/")}
+            onHome={() => router.push("/champions")}
           />
         )}
 

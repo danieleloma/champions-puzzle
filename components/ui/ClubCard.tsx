@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { Icon3D } from "@/components/ui/Icon3D";
 import type { Icon3DName } from "@/components/ui/Icon3D";
+import { playClick } from "@/lib/sounds";
 
 // ── Figma node 98:1204 "Club container" ──────────────────────────────────────
 //
@@ -139,7 +140,7 @@ export function ClubCard({
 
         <button
           type="button"
-          onClick={onPlay}
+          onClick={() => { playClick(); onPlay?.(); }}
           className="bg-[#f4f4f4] text-black rounded-[1000px] px-[14px] py-[7px] font-boldonse text-[13px] leading-5 tracking-[-0.23px] whitespace-nowrap border-none cursor-pointer"
         >
           PLAY

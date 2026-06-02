@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragEndEvent,
+  DragStartEvent,
   MouseSensor,
   TouchSensor,
   useDraggable,
@@ -15,15 +16,17 @@ import { useGameStore } from "@/store/game-store";
 import { DIFFICULTY_CONFIG } from "@/types/puzzle";
 import { getCompletionPercent } from "@/lib/puzzle-engine";
 import type { PuzzleTile as PuzzleTileType } from "@/types/puzzle";
+import { playPickUp, playSnap, playMove, playComplete } from "@/lib/sounds";
 
 // ── Visual constants — match PuzzleGridTiles exactly ─────────────────────────
 const TILE_GAP    = 2;   // px gap between tiles
 const TILE_RADIUS = 12;  // px border-radius on each tile
 
 // ── GameTile ──────────────────────────────────────────────────────────────────
-// Rectangular interactive tile: same visual spec as PuzzleGridTiles (Figma
-// node 29:2014) — #d9d9d9 placeholder, inset 2px #a7a9ad border — plus
-// dnd-kit drag/drop and highlight states.
+// Rectangular interactive tile — Figma node 39:1208 "Grid Item":
+//   Default  — bg #d9d9d9  inset 2px #a7a9ad  rounded-12
+//   Selected — bg #d9d9d9  inset 2px #fcff3f  rounded-12
+// Plus dnd-kit drag/drop and highlight states.
 
 interface GameTileProps {
   tile:          PuzzleTileType;
@@ -48,11 +51,12 @@ function GameTile({ tile, imageUrl, grid, containerSize, isHighlighted, previewM
   });
 
   // Border/glow states — inset shadow so it doesn't affect layout
+  // Default   → #a7a9ad  |  Selected (placed/locked/hint) → #fcff3f  (Figma 39:1208)
   let boxShadow = "inset 0 0 0 2px #a7a9ad";
   if (tile.isLocked || tile.isPlaced) {
-    boxShadow = "inset 0 0 0 2px rgba(156,130,74,0.85), 0 0 10px rgba(156,130,74,0.45)";
+    boxShadow = "inset 0 0 0 2px #fcff3f, 0 0 10px rgba(252,255,63,0.35)";
   } else if (isHighlighted) {
-    boxShadow = "inset 0 0 0 2px rgba(156,130,74,1), 0 0 14px rgba(156,130,74,0.7)";
+    boxShadow = "inset 0 0 0 2px #fcff3f, 0 0 14px rgba(252,255,63,0.55)";
   } else if (isDragging) {
     boxShadow = "inset 0 0 0 2px #a7a9ad, 0 8px 24px rgba(0,0,0,0.8)";
   }
@@ -125,14 +129,38 @@ export function PuzzleBoard({ imageUrl, size, showProgress = true }: PuzzleBoard
     return () => ro.disconnect();
   }, [size]);
 
+  const handleDragStart = useCallback((_event: DragStartEvent) => {
+    playPickUp();
+  }, []);
+
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
       if (!over) return;
       const toIndex = parseInt(over.id.toString().replace("drop-", ""));
-      if (!isNaN(toIndex)) moveTile(active.id.toString(), toIndex);
+      if (isNaN(toIndex)) return;
+
+      const fromTile    = tiles.find((t) => t.id === active.id.toString());
+      const willSnap    = fromTile !== undefined && toIndex === fromTile.correctIndex;
+      const wasComplete = tiles.every((t) => t.isPlaced);
+
+      moveTile(active.id.toString(), toIndex);
+
+      if (!wasComplete) {
+        const nowComplete = [...tiles]
+          .map((t) => t.id === fromTile?.id ? { ...t, currentIndex: toIndex } : t)
+          .every((t) => t.currentIndex === t.correctIndex);
+
+        if (nowComplete) {
+          playComplete();
+        } else if (willSnap) {
+          playSnap();
+        } else {
+          playMove();
+        }
+      }
     },
-    [moveTile],
+    [moveTile, tiles],
   );
 
   const completionPct = useMemo(() => getCompletionPercent(tiles), [tiles]);
@@ -145,7 +173,7 @@ export function PuzzleBoard({ imageUrl, size, showProgress = true }: PuzzleBoard
   return (
     <div className="flex flex-col items-center gap-3">
       <div ref={boardRef} className="w-full max-w-[480px]">
-        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           <div
             style={{
               position:        "relative",

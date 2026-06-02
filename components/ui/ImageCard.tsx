@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
+import { playClick } from "@/lib/sounds";
 
 // ── Figma node 13:201 "ImageClubContainer" ───────────────────────────────────
 //
@@ -143,7 +144,7 @@ function PuzzleCard({
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={() => { playClick(); onClick?.(); }}
       className={cn(
         // Container — 196×196px square, rounded-12px, border #252627
         "relative size-[196px] rounded-[12px] overflow-hidden",

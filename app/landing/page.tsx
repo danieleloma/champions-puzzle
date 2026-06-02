@@ -22,22 +22,121 @@ import { useDeviceIdentity } from "@/hooks/useDeviceIdentity";
 //    Sub-board:centre = 720 + 221.85 = 941.85 → edge = 941.85 − 199.85 = 742 px
 // ─────────────────────────────────────────────────────────────────────────────
 
-const FRAME_W = 1440;
-const FRAME_H = 1024;
+const FRAME_W  = 1440;
+const FRAME_H  = 1024;
+const MOBILE_W =  440;
+const MOBILE_H =  926;
 
 export default function LandingPage() {
   const router = useRouter();
   const { isOnboarded } = useDeviceIdentity();
-  const [scale, setScale] = useState(1);
+  const [scale,       setScale]       = useState(1);
+  const [mobileScale, setMobileScale] = useState(1);
+  const [isMobile,    setIsMobile]    = useState(false);
 
   useEffect(() => {
-    const compute = () =>
+    const compute = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
       setScale(Math.min(window.innerWidth / FRAME_W, window.innerHeight / FRAME_H));
+      setMobileScale(Math.min(window.innerWidth / MOBILE_W, window.innerHeight / MOBILE_H));
+    };
     compute();
     window.addEventListener("resize", compute);
     return () => window.removeEventListener("resize", compute);
   }, []);
 
+  // ── Mobile layout — Figma node 1:18 (440 × 926 iPhone 13 Mini) ───────────
+  if (isMobile) {
+    return (
+      <div
+        className="fixed inset-0 overflow-hidden flex items-center justify-center"
+        style={{ background: "#87CEEB" }}
+      >
+        {/* Cloud bg fills full viewport behind the scaled frame */}
+        <div style={{ position: "absolute", inset: 0, filter: "blur(15px)", opacity: 0.6, pointerEvents: "none" }}>
+          <img src="/splash/bg-clouds.png" alt="" style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }} />
+        </div>
+
+        {/* Scaled 440 × 926 Figma frame */}
+        <div
+          style={{
+            width:           MOBILE_W,
+            height:          MOBILE_H,
+            flexShrink:      0,
+            position:        "relative",
+            overflow:        "hidden",
+            transform:       `scale(${mobileScale})`,
+            transformOrigin: "center center",
+          }}
+        >
+          {/* Flag — left:-198, top:495, container:446, icon:334, rot:-26.1° */}
+          <FloatIcon left={-198} top={495} containerSize={446.279} deg={-26.1}>
+            <Icon3D name="flag" size={333.54} loading="eager" />
+          </FloatIcon>
+
+          {/* Stadium — left:266, top:518, container:251, icon:239, rot:-2.95° */}
+          <FloatIcon left={266} top={518} containerSize={251.076} deg={-2.95}>
+            <Icon3D name="stadium" size={239.089} loading="eager" />
+          </FloatIcon>
+
+          {/* Jersey — left:220 (50%), top:-63, container:369, icon:272, rot:28.72° */}
+          <FloatIcon left={220} top={-63} containerSize={368.921} deg={28.72}>
+            <Icon3D name="jersey" size={271.768} loading="eager" />
+          </FloatIcon>
+
+          {/* Gloves — centre:74, edge:-169, top:-81, container:487, icon:365, rot:-25.52° */}
+          <FloatIcon left={-169} top={-81} containerSize={486.869} deg={-25.52}>
+            <Icon3D name="gloves" size={365.17} loading="eager" />
+          </FloatIcon>
+
+          {/* Whistle — centre:300, edge:203, top:278, container:194, icon:151, rot:-20.46° */}
+          <FloatIcon left={203} top={278} containerSize={193.647} deg={-20.46}>
+            <Icon3D name="whistle" size={150.522} loading="eager" />
+          </FloatIcon>
+
+          {/* Medal — centre:92, edge:-5, top:433, container:194, icon:151, rot:-20.46° */}
+          <FloatIcon left={-5} top={433} containerSize={193.647} deg={-20.46}>
+            <Icon3D name="medal" size={150.522} loading="eager" />
+          </FloatIcon>
+
+          {/* Substitute board — centre:300, edge:100, top:727, container:400, icon:289, rot:33.09° */}
+          <FloatIcon left={100} top={727} containerSize={399.692} deg={33.09}>
+            <Icon3D name="substitute-board" size={288.846} loading="eager" />
+          </FloatIcon>
+
+          {/* Title — centred at 50% / 50% */}
+          <div
+            style={{
+              position:      "absolute",
+              left:          "50%",
+              top:           "50%",
+              transform:     "translate(-50%, -50%)",
+              textAlign:     "center",
+              pointerEvents: "none",
+              whiteSpace:    "nowrap",
+            }}
+          >
+            <p style={{ fontFamily: "var(--font-boldonse), sans-serif", fontSize: 48, lineHeight: "72px", letterSpacing: "-2.4px", color: "#000", margin: 0 }}>
+              CHAMPIONS
+            </p>
+            <p style={{ fontFamily: "var(--font-boldonse), sans-serif", fontSize: 48, lineHeight: "72px", letterSpacing: "-2.4px", color: "#000", margin: 0 }}>
+              PUZZLE
+            </p>
+          </div>
+
+          {/* CTA — Figma: left:16, top:848, w:408 */}
+          <div style={{ position: "absolute", left: 16, top: 848, width: 408 }}>
+            <Button variant="primary" fullWidth onClick={() => router.push(isOnboarded ? "/champions" : "/onboarding")}>
+              LET&apos;S PLAY
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Desktop layout ──────────────────────────────────────────────────────────
   return (
     // Sky-blue letterbox fills any remaining viewport space
     // Inline style used intentionally — the arbitrary hex class may not be

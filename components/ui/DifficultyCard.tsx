@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import { DIFFICULTY_CONFIG, type Difficulty } from "@/types/puzzle";
 import { PuzzleTypeGrid } from "@/components/ui/PuzzleTypeGrid";
 import type { ButtonHTMLAttributes } from "react";
+import { playClick } from "@/lib/sounds";
 
 // ── Figma node 50:1077 "difficulty-type" ─────────────────────────────────────
 //
@@ -22,6 +23,7 @@ export function DifficultyCard({
   difficulty,
   selected = false,
   className,
+  onClick,
   ...props
 }: DifficultyCardProps) {
   const { label, grid, xpMultiplier } = DIFFICULTY_CONFIG[difficulty];
@@ -29,6 +31,7 @@ export function DifficultyCard({
   return (
     <button
       type="button"
+      onClick={(e) => { playClick(); onClick?.(e); }}
       className={cn(
         "flex items-center justify-between overflow-hidden p-3 rounded-xl",
         "bg-[#161617] border transition-all",
