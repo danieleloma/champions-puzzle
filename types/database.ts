@@ -29,6 +29,7 @@ export interface Database {
           tile_count: number;
           active: boolean;
           featured: boolean;
+          club_id: string;
           play_count: number;
           created_at: string;
         };

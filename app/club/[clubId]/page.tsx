@@ -98,16 +98,18 @@ export default function ClubPage() {
     return () => window.removeEventListener("resize", compute);
   }, []);
 
-  // Load puzzles
+  // Load puzzles for this club
   useEffect(() => {
-    fetch("/api/puzzles")
+    if (!clubId) return;
+    setPuzzlesLoading(true);
+    fetch(`/api/puzzles?clubId=${encodeURIComponent(clubId)}`)
       .then((r) => r.json())
       .then((data: { puzzles: Puzzle[] }) => {
         setPuzzles(data.puzzles ?? []);
       })
       .catch(() => setPuzzles([]))
       .finally(() => setPuzzlesLoading(false));
-  }, []);
+  }, [clubId]);
 
   function handleDifficultyClick(d: Difficulty) {
     setSelectedDifficulty((prev) => (prev === d ? null : d));

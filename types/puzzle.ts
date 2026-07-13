@@ -76,6 +76,7 @@ export interface Puzzle {
   tile_count: number;
   active: boolean;
   featured: boolean;
+  club_id: string;
   created_at: string;
   play_count: number;
 }

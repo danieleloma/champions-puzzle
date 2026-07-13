@@ -118,8 +118,8 @@ export default function OnboardingPage() {
         body:    JSON.stringify({ username: username.trim(), device_id }),
       });
       if (!res.ok) {
-        const data = await res.json();
-        setError(data.error ?? "Username taken. Try another.");
+        const data = await res.json().catch(() => null);
+        setError(data?.error ?? "Something went wrong. Please try again.");
         return;
       }
       const data = await res.json();

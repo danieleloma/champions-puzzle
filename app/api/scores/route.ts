@@ -48,52 +48,56 @@ export async function POST(req: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = getServiceClient() as any;
 
-  const { error: attemptError } = await supabase.from("puzzle_attempts").insert({
-    user_id: data.user_id,
-    puzzle_id: data.puzzle_id,
-    difficulty: data.difficulty,
-    completion_time_ms: data.completion_time_ms,
-    move_count: data.move_count,
-    hints_used: data.hints_used,
-    completed: true,
-    score,
-  });
-
-  if (attemptError) {
-    return NextResponse.json({ error: "Failed to save attempt" }, { status: 500 });
-  }
-
-  const { data: existingEntry } = await supabase
-    .from("leaderboard_entries")
-    .select("id, best_time_ms")
-    .eq("user_id", data.user_id)
-    .eq("puzzle_id", data.puzzle_id)
-    .eq("difficulty", data.difficulty)
-    .single();
-
-  let is_personal_best = false;
-
-  if (!existingEntry || existingEntry.best_time_ms > data.completion_time_ms) {
-    is_personal_best = true;
-    await supabase.from("leaderboard_entries").upsert({
+  try {
+    const { error: attemptError } = await supabase.from("puzzle_attempts").insert({
       user_id: data.user_id,
       puzzle_id: data.puzzle_id,
       difficulty: data.difficulty,
-      best_time_ms: data.completion_time_ms,
+      completion_time_ms: data.completion_time_ms,
+      move_count: data.move_count,
+      hints_used: data.hints_used,
+      completed: true,
       score,
     });
+
+    if (attemptError) {
+      return NextResponse.json({ error: "Failed to save attempt" }, { status: 500 });
+    }
+
+    const { data: existingEntry } = await supabase
+      .from("leaderboard_entries")
+      .select("id, best_time_ms")
+      .eq("user_id", data.user_id)
+      .eq("puzzle_id", data.puzzle_id)
+      .eq("difficulty", data.difficulty)
+      .single();
+
+    let is_personal_best = false;
+
+    if (!existingEntry || existingEntry.best_time_ms > data.completion_time_ms) {
+      is_personal_best = true;
+      await supabase.from("leaderboard_entries").upsert({
+        user_id: data.user_id,
+        puzzle_id: data.puzzle_id,
+        difficulty: data.difficulty,
+        best_time_ms: data.completion_time_ms,
+        score,
+      });
+    }
+
+    await supabase.rpc("increment_xp", { user_id: data.user_id, amount: xp_earned });
+
+    const { count } = await supabase
+      .from("leaderboard_entries")
+      .select("id", { count: "exact", head: true })
+      .eq("puzzle_id", data.puzzle_id)
+      .eq("difficulty", data.difficulty)
+      .lt("best_time_ms", data.completion_time_ms);
+
+    const new_rank = (count ?? 0) + 1;
+
+    return NextResponse.json({ score, xp_earned, new_rank, is_personal_best });
+  } catch {
+    return NextResponse.json({ error: "Failed to save score" }, { status: 500 });
   }
-
-  await supabase.rpc("increment_xp", { user_id: data.user_id, amount: xp_earned });
-
-  const { count } = await supabase
-    .from("leaderboard_entries")
-    .select("id", { count: "exact", head: true })
-    .eq("puzzle_id", data.puzzle_id)
-    .eq("difficulty", data.difficulty)
-    .lt("best_time_ms", data.completion_time_ms);
-
-  const new_rank = (count ?? 0) + 1;
-
-  return NextResponse.json({ score, xp_earned, new_rank, is_personal_best });
 }

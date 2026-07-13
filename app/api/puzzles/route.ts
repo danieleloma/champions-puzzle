@@ -1,19 +1,30 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 
-export async function GET() {
-  const supabase = getServiceClient();
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = getServiceClient();
+    const clubId = request.nextUrl.searchParams.get("clubId");
 
-  const { data, error } = await supabase
-    .from("puzzles")
-    .select("*")
-    .eq("active", true)
-    .order("featured", { ascending: false })
-    .order("created_at", { ascending: false });
+    let query = supabase
+      .from("puzzles")
+      .select("*")
+      .eq("active", true);
 
-  if (error) {
+    if (clubId) {
+      query = query.eq("club_id", clubId);
+    }
+
+    const { data, error } = await query
+      .order("featured", { ascending: false })
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      return NextResponse.json({ error: "Failed to fetch puzzles" }, { status: 500 });
+    }
+
+    return NextResponse.json({ puzzles: data ?? [] });
+  } catch {
     return NextResponse.json({ error: "Failed to fetch puzzles" }, { status: 500 });
   }
-
-  return NextResponse.json({ puzzles: data ?? [] });
 }
