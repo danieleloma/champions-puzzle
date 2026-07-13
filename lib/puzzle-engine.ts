@@ -33,6 +33,14 @@ function shuffleTiles(tiles: PuzzleTile[]): PuzzleTile[] {
   }));
 }
 
+// True when the two grid cells share an edge — a tile can only swap into a
+// directly adjacent cell (up/down/left/right), one step at a time.
+export function isAdjacent(indexA: number, indexB: number, grid: number): boolean {
+  const rowA = Math.floor(indexA / grid), colA = indexA % grid;
+  const rowB = Math.floor(indexB / grid), colB = indexB % grid;
+  return Math.abs(rowA - rowB) + Math.abs(colA - colB) === 1;
+}
+
 export function swapTiles(
   tiles: PuzzleTile[],
   fromId: string,

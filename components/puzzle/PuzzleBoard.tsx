@@ -14,7 +14,7 @@ import {
 } from "@dnd-kit/core";
 import { useGameStore } from "@/store/game-store";
 import { DIFFICULTY_CONFIG } from "@/types/puzzle";
-import { getCompletionPercent } from "@/lib/puzzle-engine";
+import { getCompletionPercent, isAdjacent } from "@/lib/puzzle-engine";
 import type { PuzzleTile as PuzzleTileType } from "@/types/puzzle";
 import { playPickUp, playSnap, playMove, playComplete } from "@/lib/sounds";
 
@@ -35,9 +35,10 @@ interface GameTileProps {
   containerSize: number;
   isHighlighted: boolean;
   previewMode:   boolean;
+  activeIndex:   number | null; // currentIndex of the tile being dragged, if any
 }
 
-function GameTile({ tile, imageUrl, grid, containerSize, isHighlighted, previewMode }: GameTileProps) {
+function GameTile({ tile, imageUrl, grid, containerSize, isHighlighted, previewMode, activeIndex }: GameTileProps) {
   const tileVisual = (containerSize - (grid - 1) * TILE_GAP) / grid;
   const col = tile.currentIndex % grid;
   const row = Math.floor(tile.currentIndex / grid);
@@ -45,9 +46,15 @@ function GameTile({ tile, imageUrl, grid, containerSize, isHighlighted, previewM
   const { attributes, listeners, setNodeRef: setDragRef, isDragging } =
     useDraggable({ id: tile.id, disabled: tile.isLocked || previewMode });
 
-  const { setNodeRef: setDropRef } = useDroppable({
+  // While a tile is being dragged, only its four cardinal neighbors are
+  // valid drop targets — a tile can move only one step at a time.
+  const isDragSource  = activeIndex === tile.currentIndex;
+  const isValidTarget = activeIndex !== null && !isDragSource && isAdjacent(activeIndex, tile.currentIndex, grid);
+  const isBlocked     = activeIndex !== null && !isDragSource && !isValidTarget;
+
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
     id:       `drop-${tile.currentIndex}`,
-    disabled: previewMode,
+    disabled: previewMode || isBlocked,
   });
 
   // Border/glow states — inset shadow so it doesn't affect layout
@@ -59,6 +66,10 @@ function GameTile({ tile, imageUrl, grid, containerSize, isHighlighted, previewM
     boxShadow = "inset 0 0 0 2px #fcff3f, 0 0 14px rgba(252,255,63,0.55)";
   } else if (isDragging) {
     boxShadow = "inset 0 0 0 2px #a7a9ad, 0 8px 24px rgba(0,0,0,0.8)";
+  } else if (isValidTarget && isOver) {
+    boxShadow = "inset 0 0 0 2px #fcff3f, 0 0 12px rgba(252,255,63,0.5)";
+  } else if (isValidTarget) {
+    boxShadow = "inset 0 0 0 2px #fcff3f88";
   }
 
   return (
@@ -85,9 +96,9 @@ function GameTile({ tile, imageUrl, grid, containerSize, isHighlighted, previewM
         touchAction:        "none",
         cursor:             tile.isLocked ? "default" : isDragging ? "grabbing" : "grab",
         zIndex:             isDragging ? 50 : 1,
-        opacity:            isDragging ? 0.92 : 1,
+        opacity:            isDragging ? 0.92 : isBlocked ? 0.35 : 1,
         transform:          isDragging ? "scale(1.04)" : "scale(1)",
-        transition:         isDragging ? undefined : "box-shadow 0.15s, transform 0.1s",
+        transition:         isDragging ? undefined : "box-shadow 0.15s, transform 0.1s, opacity 0.15s",
         userSelect:         "none",
       }}
     />
@@ -108,6 +119,7 @@ export function PuzzleBoard({ imageUrl, size, showProgress = true }: PuzzleBoard
 
   const boardRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState(size ?? 320);
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const { grid } = DIFFICULTY_CONFIG[difficulty];
 
   const sensors = useSensors(
@@ -129,26 +141,39 @@ export function PuzzleBoard({ imageUrl, size, showProgress = true }: PuzzleBoard
     return () => ro.disconnect();
   }, [size]);
 
-  const handleDragStart = useCallback((_event: DragStartEvent) => {
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    const tile = tiles.find((t) => t.id === event.active.id.toString());
+    setActiveIndex(tile?.currentIndex ?? null);
     playPickUp();
+  }, [tiles]);
+
+  const handleDragCancel = useCallback(() => {
+    setActiveIndex(null);
   }, []);
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
+      setActiveIndex(null);
+
       const { active, over } = event;
       if (!over) return;
       const toIndex = parseInt(over.id.toString().replace("drop-", ""));
       if (isNaN(toIndex)) return;
 
-      const fromTile    = tiles.find((t) => t.id === active.id.toString());
-      const willSnap    = fromTile !== undefined && toIndex === fromTile.correctIndex;
+      const fromTile = tiles.find((t) => t.id === active.id.toString());
+      if (!fromTile || toIndex === fromTile.currentIndex) return;
+      // A tile can only move one step at a time — into a directly
+      // adjacent cell (up/down/left/right), never a distant one.
+      if (!isAdjacent(fromTile.currentIndex, toIndex, grid)) return;
+
+      const willSnap    = toIndex === fromTile.correctIndex;
       const wasComplete = tiles.every((t) => t.isPlaced);
 
       moveTile(active.id.toString(), toIndex);
 
       if (!wasComplete) {
         const nowComplete = [...tiles]
-          .map((t) => t.id === fromTile?.id ? { ...t, currentIndex: toIndex } : t)
+          .map((t) => t.id === fromTile.id ? { ...t, currentIndex: toIndex } : t)
           .every((t) => t.currentIndex === t.correctIndex);
 
         if (nowComplete) {
@@ -160,7 +185,7 @@ export function PuzzleBoard({ imageUrl, size, showProgress = true }: PuzzleBoard
         }
       }
     },
-    [moveTile, tiles],
+    [moveTile, tiles, grid],
   );
 
   const completionPct = useMemo(() => getCompletionPercent(tiles), [tiles]);
@@ -173,7 +198,12 @@ export function PuzzleBoard({ imageUrl, size, showProgress = true }: PuzzleBoard
   return (
     <div className="flex flex-col items-center gap-3">
       <div ref={boardRef} className="w-full max-w-[480px]">
-        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <DndContext
+          sensors={sensors}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
+        >
           <div
             style={{
               position:        "relative",
@@ -201,6 +231,7 @@ export function PuzzleBoard({ imageUrl, size, showProgress = true }: PuzzleBoard
                   containerSize={containerSize}
                   isHighlighted={tile.id === lastHintedTileId}
                   previewMode={previewMode}
+                  activeIndex={activeIndex}
                 />
               ))
             )}
