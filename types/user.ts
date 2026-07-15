@@ -29,7 +29,7 @@ export type AchievementKey =
   | "top_100"
   | "no_hints"
   | "speed_demon"
-  | "legendary_solver"
+  | "master_solver"
   | "streak_7"
   | "social_sharer"
   | "challenger";
@@ -62,10 +62,10 @@ export const ACHIEVEMENT_CONFIGS: Record<
     description: "Complete a puzzle in under 60 seconds",
     icon: "⚡",
   },
-  legendary_solver: {
-    key: "legendary_solver",
-    label: "Legendary Solver",
-    description: "Complete a Legendary difficulty puzzle",
+  master_solver: {
+    key: "master_solver",
+    label: "Master Solver",
+    description: "Complete a Medium difficulty puzzle",
     icon: "🔱",
   },
   streak_7: {

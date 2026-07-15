@@ -7,7 +7,7 @@ import { calculateScore, calculateXP } from "@/lib/score-calculator";
 const scoreSchema = z.object({
   user_id: z.string().uuid(),
   puzzle_id: z.string().uuid(),
-  difficulty: z.enum(["beginner", "easy", "medium", "hard", "expert", "legendary"]),
+  difficulty: z.enum(["beginner", "easy", "medium"]),
   completion_time_ms: z.number().positive(),
   move_count: z.number().int().positive(),
   hints_used: z.number().int().min(0),

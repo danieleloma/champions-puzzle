@@ -7,9 +7,6 @@ const MINIMUM_TIMES_MS: Record<Difficulty, number> = {
   beginner: 3_000,
   easy: 6_000,
   medium: 12_000,
-  hard: 20_000,
-  expert: 45_000,
-  legendary: 90_000,
 };
 
 export interface AntiCheatPayload {

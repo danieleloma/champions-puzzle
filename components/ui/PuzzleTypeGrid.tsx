@@ -13,7 +13,6 @@ import { cn } from "@/lib/utils";
 //  5×5  gap 1px    cell 7.6px   radius 1.278px  bg #ff594d  cell #fcff3f
 //
 //  Formula: inner=42, gap = n===3 ? 1.5 : 1,  cell = (42 − (n−1)×gap) / n
-//  Generalises to hard(6×6) / expert(8×8) / legendary(10×10).
 //
 //  Colours for Figma-undefined difficulties extended from the design system.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -30,34 +29,24 @@ function cellSize(n: number)   { return (INNER - (n - 1) * gap(n)) / n; }
 function cellRadius(n: number) { return n === 3 ? 2 : n === 4 ? 1.5 : 1; }
 
 // ── Colour map ────────────────────────────────────────────────────────────────
-// Figma specifies 3×3 / 4×4 / 5×5; hard / expert / legendary extended from
-// the same design-system tokens.
+// Figma specifies 3×3 / 4×4 / 5×5.
 
 const BG: Record<Difficulty, string> = {
   beginner:  "#007914", // --color/green/green-700
   easy:      "#ff6a0c", // --poll/spot-ornage-bright
   medium:    "#ff594d", // --color/red/red-400
-  hard:      "#dc2626", // --color/red/red-600  (extended)
-  expert:    "#3a3b3e", // --color/grey/grey-800 (extended)
-  legendary: "#9C824A", // arsenal-gold          (extended)
 };
 
 const CELL: Record<Difficulty, string> = {
   beginner:  "#fcff3f", // --logo-green
   easy:      "#fff827",
   medium:    "#fcff3f", // --logo-green
-  hard:      "#fcff3f", // --logo-green
-  expert:    "#fcff3f", // --logo-green
-  legendary: "#fff827",
 };
 
 const GRID_N: Record<Difficulty, number> = {
   beginner:  3,
   easy:      4,
   medium:    5,
-  hard:      6,
-  expert:    8,
-  legendary: 10,
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────

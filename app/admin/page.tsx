@@ -85,7 +85,7 @@ export default function AdminPage() {
               name="difficulty"
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-arsenal-red"
             >
-              {["beginner", "easy", "medium", "hard", "expert", "legendary"].map((d) => (
+              {["beginner", "easy", "medium"].map((d) => (
                 <option key={d} value={d} className="bg-[#1a1a1a]">
                   {d.charAt(0).toUpperCase() + d.slice(1)}
                 </option>

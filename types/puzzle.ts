@@ -1,10 +1,4 @@
-export type Difficulty =
-  | "beginner"
-  | "easy"
-  | "medium"
-  | "hard"
-  | "expert"
-  | "legendary";
+export type Difficulty = "beginner" | "easy" | "medium";
 
 export interface DifficultyConfig {
   label: string;
@@ -20,7 +14,7 @@ export const DIFFICULTY_CONFIG: Record<Difficulty, DifficultyConfig> = {
     label: "Beginner",
     grid: 3,
     tileCount: 9,
-    xpMultiplier: 1,
+    xpMultiplier: 2,
     hintLimit: 5,
     color: "#22c55e",
   },
@@ -28,7 +22,7 @@ export const DIFFICULTY_CONFIG: Record<Difficulty, DifficultyConfig> = {
     label: "Easy",
     grid: 4,
     tileCount: 16,
-    xpMultiplier: 1.5,
+    xpMultiplier: 3,
     hintLimit: 4,
     color: "#84cc16",
   },
@@ -36,33 +30,9 @@ export const DIFFICULTY_CONFIG: Record<Difficulty, DifficultyConfig> = {
     label: "Medium",
     grid: 5,
     tileCount: 25,
-    xpMultiplier: 2,
+    xpMultiplier: 5,
     hintLimit: 3,
     color: "#eab308",
-  },
-  hard: {
-    label: "Hard",
-    grid: 6,
-    tileCount: 36,
-    xpMultiplier: 3,
-    hintLimit: 2,
-    color: "#f97316",
-  },
-  expert: {
-    label: "Expert",
-    grid: 8,
-    tileCount: 64,
-    xpMultiplier: 5,
-    hintLimit: 1,
-    color: "#ef4444",
-  },
-  legendary: {
-    label: "Legendary",
-    grid: 10,
-    tileCount: 100,
-    xpMultiplier: 10,
-    hintLimit: 0,
-    color: "#9C824A",
   },
 };
 

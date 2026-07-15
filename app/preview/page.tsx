@@ -167,7 +167,7 @@ function ComponentsSection() {
   const [inputVal, setInputVal]       = useState("");
   const [hintVal]                     = useState(2);
 
-  const difficulties: Difficulty[] = ["beginner", "easy", "medium", "hard", "expert", "legendary"];
+  const difficulties: Difficulty[] = ["beginner", "easy", "medium"];
 
   const ALL_ICONS: Icon3DName[] = [
     "flag", "stadium", "board", "goal-post", "cup", "jersey", "boot",
@@ -226,7 +226,7 @@ function ComponentsSection() {
       <Section title="Badge">
         <Row label="Badge — unselected / selected">
           <Badge label="Beginner" />
-          <Badge label="Expert"   selected />
+          <Badge label="Medium"   selected />
         </Row>
         <Row label="User info">
           <Badge variant="user-info" username="SakaSpeed"  avatarColor="#EF0107" xp={420} />
@@ -277,9 +277,9 @@ function ComponentsSection() {
       <Section title="Leaderboard Card">
         <Row>
           <div className="w-[408px] flex flex-col gap-2">
-            <LeaderboardCard rank={1} username="SakaSpeed"      difficulty="Expert"   puzzleTitle="Arteta Celebration" timeMs={47320} points={9800} />
-            <LeaderboardCard rank={2} username="NorthLondon99"  difficulty="Hard"     puzzleTitle="Arteta Celebration" timeMs={62100} points={7400} />
-            <LeaderboardCard rank={3} username="You"            difficulty="Medium"   puzzleTitle="Arteta Celebration" timeMs={88500} points={5200} isCurrentUser />
+            <LeaderboardCard rank={1} username="SakaSpeed"      difficulty="Medium"   puzzleTitle="Arteta Celebration" timeMs={47320} points={9800} />
+            <LeaderboardCard rank={2} username="NorthLondon99"  difficulty="Easy"     puzzleTitle="Arteta Celebration" timeMs={62100} points={7400} />
+            <LeaderboardCard rank={3} username="You"            difficulty="Beginner" puzzleTitle="Arteta Celebration" timeMs={88500} points={5200} isCurrentUser />
           </div>
         </Row>
       </Section>
@@ -385,7 +385,7 @@ function ComponentsSection() {
             src="https://dukcbuklbjjbcexbwgaf.supabase.co/storage/v1/object/public/puzzle-images/puzzles/1779883542723-h28fp9jfnji.avif"
             title="Arteta Celebration"
             gridSize={5}
-            tapLabel="Expert mode"
+            tapLabel="Medium mode"
           />
         </Row>
         <Row label="Club card">
