@@ -1,6 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { isAuthorizedAdmin } from "@/lib/admin-auth";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  if (!isAuthorizedAdmin(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const checks = {
     NEXT_PUBLIC_SUPABASE_URL: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -17,15 +22,14 @@ export async function GET() {
   if (allOk) {
     try {
       const { getServiceClient } = await import("@/lib/supabase");
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const supabase = getServiceClient() as any;
+      const supabase = getServiceClient();
 
       const { error } = await supabase.from("puzzles").select("id").limit(1);
       dbOk = !error;
       if (error) dbError = error.message;
 
       const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
-      const hasBucket = buckets?.some((b: { name: string }) => b.name === "puzzle-images");
+      const hasBucket = buckets?.some((b) => b.name === "puzzle-images") ?? false;
       storageOk = !bucketError && hasBucket;
       if (bucketError) storageError = bucketError.message;
       else if (!hasBucket) storageError = "puzzle-images bucket not found";

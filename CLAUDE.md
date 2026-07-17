@@ -8,10 +8,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run dev          # start dev server (Next.js on :3000)
 npm run build        # production build
 npm run type-check   # tsc --noEmit
-npm run lint         # next lint
+npm run lint         # eslint . (Next 16 removed `next lint` — flat config in eslint.config.mjs)
+npm run test         # vitest run — unit tests for lib/puzzle-engine, lib/score-calculator, lib/anti-cheat
 ```
 
-No test suite. Verification is done by running the app with Playwright:
+CI (`.github/workflows/ci.yml`) runs type-check, lint, and test on every push/PR to main.
+
+Unit tests cover pure logic only (no UI/integration tests). UI/behavioral verification is done by running the app with Playwright:
 ```bash
 node /tmp/verify_arsenal.cjs   # screenshot all pages at mobile + desktop
 ```
@@ -116,7 +119,15 @@ NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY
 NEXT_PUBLIC_APP_URL
+ADMIN_API_SECRET       # gates /admin and /api/admin/* — required in prod (fails closed if unset)
+SCORE_HMAC_SECRET      # signs puzzle-session tokens (lib/anti-cheat.ts) — required for score submission to work
+```
+
+Optional — each is a true no-op until set (same lazy-init convention as `lib/supabase.ts`):
+```
 NEXT_PUBLIC_POSTHOG_KEY
 NEXT_PUBLIC_POSTHOG_HOST
 NEXT_PUBLIC_SENTRY_DSN
+SENTRY_ORG              # only needed alongside NEXT_PUBLIC_SENTRY_DSN, for source-map upload
+SENTRY_PROJECT
 ```

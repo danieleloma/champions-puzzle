@@ -7,6 +7,26 @@ import {
   isComplete,
   applyHint,
 } from "@/lib/puzzle-engine";
+import { getOrCreateDeviceId } from "@/lib/device-identity";
+
+// Fetches a fresh server-signed session token anchoring the real start time
+// for this puzzle/difficulty — see lib/anti-cheat.ts. Fire-and-forget: if it
+// fails (offline, etc.) the score submission at the end will just be
+// rejected server-side rather than blocking gameplay here.
+function requestSessionToken(puzzleId: string, difficulty: Difficulty, set: (partial: Partial<GameState>) => void) {
+  const device_id = getOrCreateDeviceId();
+  if (!device_id) return;
+  fetch("/api/puzzle-sessions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ puzzle_id: puzzleId, difficulty, device_id }),
+  })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((data: { session_token?: string } | null) => {
+      if (data?.session_token) set({ sessionToken: data.session_token });
+    })
+    .catch(() => {});
+}
 
 interface GameState {
   puzzle: Puzzle | null;
@@ -21,6 +41,7 @@ interface GameState {
   hintsUsed: number;
   previewMode: boolean;
   lastHintedTileId: string | null;
+  sessionToken: string | null;
 
   setPuzzle: (puzzle: Puzzle, difficulty: Difficulty) => void;
   startGame: () => void;
@@ -49,10 +70,12 @@ export const useGameStore = create<GameState>((set, get) => ({
   hintsUsed: 0,
   previewMode: false,
   lastHintedTileId: null,
+  sessionToken: null,
 
   setPuzzle: (puzzle, difficulty) => {
     const tiles = createTiles(difficulty);
-    set({ puzzle, difficulty, tiles, isStarted: false, isCompleted: false, isPaused: false, elapsedMs: 0, moveCount: 0, hintsUsed: 0 });
+    set({ puzzle, difficulty, tiles, isStarted: false, isCompleted: false, isPaused: false, elapsedMs: 0, moveCount: 0, hintsUsed: 0, sessionToken: null });
+    requestSessionToken(puzzle.id, difficulty, set);
   },
 
   startGame: () => {
@@ -134,7 +157,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       hintsUsed: 0,
       previewMode: false,
       lastHintedTileId: null,
+      sessionToken: null,
     });
+    requestSessionToken(puzzle.id, difficulty, set);
   },
 
   pauseGame: () => set({ isPaused: true }),

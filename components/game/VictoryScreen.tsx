@@ -4,8 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useGameStore } from "@/store/game-store";
 import { useUserStore } from "@/store/user-store";
 import { formatTime, calculateScore, calculateXP } from "@/lib/score-calculator";
-import { generateChecksum } from "@/lib/anti-cheat";
-import { getOrCreateDeviceId, getSessionToken } from "@/lib/device-identity";
+import { getOrCreateDeviceId } from "@/lib/device-identity";
 import { Icon3D } from "@/components/ui";
 
 // ── Figma nodes: 30:1246 desktop (1440×1024) · 21:1418 mobile (440×926) ──────
@@ -109,11 +108,11 @@ function WhatsAppIcon() {
 
 export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
   const cardRef = useRef<HTMLDivElement>(null);
-  const { puzzle, difficulty, elapsedMs, moveCount, hintsUsed } = useGameStore();
-  const { user, addXP } = useUserStore();
+  const { puzzle, difficulty, elapsedMs, moveCount, hintsUsed, sessionToken } = useGameStore();
+  const { addXP } = useUserStore();
 
   const [rank,        setRank]        = useState<number | null>(null);
-  const [submitted,   setSubmitted]   = useState(false);
+  const submittedRef = useRef(false);
   const [copied,      setCopied]      = useState(false);
   const [scale,       setScale]       = useState(1);
   const [mobileScale, setMobileScale] = useState(1);
@@ -125,7 +124,10 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
       const h = window.innerHeight;
       setIsMobile(w < 768);
       setScale(Math.min(w / FRAME_W, h / FRAME_H));
-      setMobileScale(Math.min(w / MOBILE_W, h / MOBILE_H));
+      // Width-locked, not min(w,h) — same fix as app/landing & app/onboarding:
+      // "contain" scaling leaves dead space down both sides on short/wide
+      // viewports. Fills the screen edge-to-edge and scrolls (below) instead.
+      setMobileScale(w / MOBILE_W);
     };
     compute();
     window.addEventListener("resize", compute);
@@ -147,16 +149,26 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
   }, []);
 
   useEffect(() => {
-    if (submitted || !puzzle || !user) return;
-    setSubmitted(true);
-    const device_id     = getOrCreateDeviceId();
-    const session_token = getSessionToken() ?? "";
-    const payload = { puzzle_id: puzzle.id, difficulty, completion_time_ms: elapsedMs, move_count: moveCount, hints_used: hintsUsed, device_id, session_token };
-    const checksum = generateChecksum(payload);
+    if (submittedRef.current || !sessionToken) return;
+    const state = useGameStore.getState();
+    const { user } = useUserStore.getState();
+    if (!state.puzzle || !user) return;
+    submittedRef.current = true;
+
+    const device_id = getOrCreateDeviceId();
+    const payload = {
+      puzzle_id: state.puzzle.id,
+      difficulty: state.difficulty,
+      completion_time_ms: state.elapsedMs,
+      move_count: state.moveCount,
+      hints_used: state.hintsUsed,
+      device_id,
+      session_token: sessionToken,
+    };
     fetch("/api/scores", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ ...payload, checksum, user_id: user.id }),
+      body:    JSON.stringify(payload),
     })
       .then((r) => r.json())
       .then((data) => {
@@ -164,7 +176,7 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
         if (data.xp_earned) addXP(data.xp_earned);
       })
       .catch(() => {});
-  }, []);
+  }, [sessionToken, addXP]);
 
   if (!puzzle) return null;
 
@@ -296,26 +308,33 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
   );
 
   // ── Mobile layout — Figma node 21:1418 (440 × 926) ────────────────────────
+  // Scrollable overlay, not fixed/overflow-hidden + centred: on a short/wide
+  // viewport a width-locked scale can render the frame taller than the
+  // viewport, and this card sits at 50%/50% within it — cropping instead of
+  // scrolling would risk clipping the card itself. Same fix as app/landing
+  // & app/onboarding.
   if (isMobile) {
     return (
-      <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center" style={{ background: "#87CEEB" }}>
+      <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden flex justify-center" style={{ background: "#87CEEB" }}>
 
-        {/* Cloud bg — full viewport, outside the scaled frame */}
-        <div className="absolute inset-0 pointer-events-none" style={{ filter: "blur(15px)", opacity: 0.6 }}>
+        {/* Cloud bg — fixed, fills viewport regardless of scroll/frame size */}
+        <div className="fixed inset-0 pointer-events-none" style={{ filter: "blur(15px)", opacity: 0.6, zIndex: 0 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/splash/bg-clouds.png" alt="" style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }} />
         </div>
 
-        {/* Scaled 440 × 926 Figma frame */}
+        {/* Spacer sized to the scaled frame height — transform doesn't shrink
+            layout footprint, so this keeps the scroll region correct. */}
+        <div style={{ width: MOBILE_W * mobileScale, height: MOBILE_H * mobileScale, position: "relative", zIndex: 1 }}>
         <div
           style={{
             width:           MOBILE_W,
             height:          MOBILE_H,
-            flexShrink:      0,
-            position:        "relative",
-            overflow:        "hidden",
+            position:        "absolute",
+            top:             0,
+            left:            0,
             transform:       `scale(${mobileScale})`,
-            transformOrigin: "center center",
+            transformOrigin: "top left",
           }}
         >
           {/* 7 floating icons — same positions as splash screen */}
@@ -344,6 +363,7 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 21, display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 8, zIndex: 5 }}>
             <div style={{ width: 134, height: 5, borderRadius: 100, background: "#1d1e25" }} />
           </div>
+        </div>
         </div>
       </div>
     );

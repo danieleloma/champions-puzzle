@@ -28,10 +28,7 @@ export async function POST(req: NextRequest) {
   try {
     const supabase = getServiceClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const db = supabase as any;
-
-    const { data: existing } = await db
+    const { data: existing } = await supabase
       .from("users")
       .select("id")
       .eq("username", username)
@@ -41,7 +38,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Username already taken" }, { status: 409 });
     }
 
-    const { data: deviceUser } = await db
+    const { data: deviceUser } = await supabase
       .from("users")
       .select("*")
       .eq("device_id", device_id)
@@ -51,7 +48,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(deviceUser);
     }
 
-    const { data: newUser, error } = await db
+    const { data: newUser, error } = await supabase
       .from("users")
       .insert({
         device_id,

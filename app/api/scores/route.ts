@@ -5,15 +5,13 @@ import { validateScore } from "@/lib/anti-cheat";
 import { calculateScore, calculateXP } from "@/lib/score-calculator";
 
 const scoreSchema = z.object({
-  user_id: z.string().uuid(),
   puzzle_id: z.string().uuid(),
   difficulty: z.enum(["beginner", "easy", "medium"]),
   completion_time_ms: z.number().positive(),
   move_count: z.number().int().positive(),
   hints_used: z.number().int().min(0),
-  device_id: z.string(),
+  device_id: z.string().uuid(),
   session_token: z.string(),
-  checksum: z.string(),
 });
 
 export async function POST(req: NextRequest) {
@@ -45,12 +43,24 @@ export async function POST(req: NextRequest) {
     score,
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabase = getServiceClient() as any;
+  const supabase = getServiceClient();
 
   try {
+    // user_id is derived server-side from device_id — never trust a client-
+    // supplied user_id, or any device could submit scores/XP as anyone else.
+    const { data: owner, error: ownerError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("device_id", data.device_id)
+      .single();
+
+    if (ownerError || !owner) {
+      return NextResponse.json({ error: "Unknown device" }, { status: 404 });
+    }
+    const user_id = owner.id;
+
     const { error: attemptError } = await supabase.from("puzzle_attempts").insert({
-      user_id: data.user_id,
+      user_id,
       puzzle_id: data.puzzle_id,
       difficulty: data.difficulty,
       completion_time_ms: data.completion_time_ms,
@@ -67,7 +77,7 @@ export async function POST(req: NextRequest) {
     const { data: existingEntry } = await supabase
       .from("leaderboard_entries")
       .select("id, best_time_ms")
-      .eq("user_id", data.user_id)
+      .eq("user_id", user_id)
       .eq("puzzle_id", data.puzzle_id)
       .eq("difficulty", data.difficulty)
       .single();
@@ -75,17 +85,24 @@ export async function POST(req: NextRequest) {
     let is_personal_best = false;
 
     if (!existingEntry || existingEntry.best_time_ms > data.completion_time_ms) {
-      is_personal_best = true;
-      await supabase.from("leaderboard_entries").upsert({
-        user_id: data.user_id,
-        puzzle_id: data.puzzle_id,
-        difficulty: data.difficulty,
-        best_time_ms: data.completion_time_ms,
-        score,
-      });
+      // onConflict is required: without it, upsert() matches conflicts on
+      // the primary key (id) — which is never supplied here, so every call
+      // after the first silently violates the unique(user_id, puzzle_id,
+      // difficulty) constraint instead of updating the existing row.
+      const { error: upsertError } = await supabase.from("leaderboard_entries").upsert(
+        {
+          user_id,
+          puzzle_id: data.puzzle_id,
+          difficulty: data.difficulty,
+          best_time_ms: data.completion_time_ms,
+          score,
+        },
+        { onConflict: "user_id,puzzle_id,difficulty" }
+      );
+      is_personal_best = !upsertError;
     }
 
-    await supabase.rpc("increment_xp", { user_id: data.user_id, amount: xp_earned });
+    await supabase.rpc("increment_xp", { user_id, amount: xp_earned });
 
     const { count } = await supabase
       .from("leaderboard_entries")

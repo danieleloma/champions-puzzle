@@ -39,7 +39,13 @@ export default function LandingPage() {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
       setScale(Math.min(window.innerWidth / FRAME_W, window.innerHeight / FRAME_H));
-      setMobileScale(Math.min(window.innerWidth / MOBILE_W, window.innerHeight / MOBILE_H));
+      // Width-locked, not min(w,h): scaling by the smaller of the two ratios
+      // ("contain") leaves dead space down both sides on short/wide
+      // viewports — reproduced concretely at 390×700. Scaling by width alone
+      // always fills the screen edge-to-edge; if that makes the frame taller
+      // than the viewport the page scrolls (below) instead of cropping the
+      // CTA off the bottom the way a center-cropped "cover" scale would.
+      setMobileScale(window.innerWidth / MOBILE_W);
     };
     compute();
     window.addEventListener("resize", compute);
@@ -50,24 +56,26 @@ export default function LandingPage() {
   if (isMobile) {
     return (
       <div
-        className="fixed inset-0 overflow-hidden flex items-center justify-center"
+        className="min-h-screen w-full overflow-y-auto overflow-x-hidden flex justify-center"
         style={{ background: "#87CEEB" }}
       >
-        {/* Cloud bg fills full viewport behind the scaled frame */}
-        <div style={{ position: "absolute", inset: 0, filter: "blur(15px)", opacity: 0.6, pointerEvents: "none" }}>
+        {/* Cloud bg — fixed, fills viewport regardless of scroll/frame size */}
+        <div style={{ position: "fixed", inset: 0, filter: "blur(15px)", opacity: 0.6, pointerEvents: "none", zIndex: 0 }}>
           <img src="/splash/bg-clouds.png" alt="" style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }} />
         </div>
 
-        {/* Scaled 440 × 926 Figma frame */}
+        {/* Spacer sized to the scaled frame height — transform doesn't shrink
+            layout footprint, so this keeps the scroll region correct. */}
+        <div style={{ width: MOBILE_W * mobileScale, height: MOBILE_H * mobileScale, position: "relative", zIndex: 1 }}>
         <div
           style={{
             width:           MOBILE_W,
             height:          MOBILE_H,
-            flexShrink:      0,
-            position:        "relative",
-            overflow:        "hidden",
+            position:        "absolute",
+            top:             0,
+            left:            0,
             transform:       `scale(${mobileScale})`,
-            transformOrigin: "center center",
+            transformOrigin: "top left",
           }}
         >
           {/* Flag — left:-198, top:495, container:446, icon:334, rot:-26.1° */}
@@ -131,6 +139,7 @@ export default function LandingPage() {
               LET&apos;S PLAY
             </Button>
           </div>
+        </div>
         </div>
       </div>
     );

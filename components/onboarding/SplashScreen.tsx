@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import type Anime from "animejs";
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -13,10 +14,8 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
     async function animate() {
       // animejs v3 exports the function as `module.exports` (CJS).
       // Webpack's ESM interop puts it on `.default`; if that's absent fall back to the module itself.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const mod = await import("animejs");
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const anime: any = (mod as any).default?.timeline ? (mod as any).default : mod;
+      const mod = (await import("animejs")) as unknown as { default?: typeof Anime };
+      const anime = mod.default?.timeline ? mod.default : (mod as unknown as typeof Anime);
       const el = containerRef.current;
       if (!el) return;
 

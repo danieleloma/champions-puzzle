@@ -17,6 +17,7 @@ export interface Database {
           last_seen_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["users"]["Insert"]>;
+        Relationships: [];
       };
       puzzles: {
         Row: {
@@ -38,6 +39,7 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["puzzles"]["Insert"]>;
+        Relationships: [];
       };
       puzzle_attempts: {
         Row: {
@@ -57,6 +59,7 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["puzzle_attempts"]["Insert"]>;
+        Relationships: [];
       };
       leaderboard_entries: {
         Row: {
@@ -75,8 +78,25 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["leaderboard_entries"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "leaderboard_entries_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "leaderboard_entries_puzzle_id_fkey";
+            columns: ["puzzle_id"];
+            isOneToOne: false;
+            referencedRelation: "puzzles";
+            referencedColumns: ["id"];
+          },
+        ];
       };
     };
+    Views: Record<string, never>;
     Functions: {
       increment_xp: {
         Args: { user_id: string; amount: number };

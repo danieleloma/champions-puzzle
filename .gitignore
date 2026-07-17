@@ -18,6 +18,9 @@ build/
 # Vercel
 .vercel
 
+# Supabase CLI — local metadata, can include a pooler connection string
+supabase/.temp/
+
 # System
 .DS_Store
 *.pem

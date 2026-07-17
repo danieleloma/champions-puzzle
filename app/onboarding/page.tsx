@@ -93,7 +93,10 @@ export default function OnboardingPage() {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
       setScale(Math.min(window.innerWidth / FRAME_W, window.innerHeight / FRAME_H));
-      setMobileScale(Math.min(window.innerWidth / MOBILE_W, window.innerHeight / MOBILE_H));
+      // Width-locked — see app/landing/page.tsx for why: fills the screen
+      // edge-to-edge and scrolls (below) rather than either leaving dead
+      // side-gaps (min) or center-cropping content off the bottom (max).
+      setMobileScale(window.innerWidth / MOBILE_W);
     };
     compute();
     window.addEventListener("resize", compute);
@@ -151,19 +154,19 @@ export default function OnboardingPage() {
   // ───────────────────────────────────────────────────────────────────────────
   if (isMobile) {
     return (
-      <div
-        className="fixed inset-0 bg-[#0f0f10] overflow-hidden flex items-center justify-center"
-      >
-        {/* Scaled 440 × 926 Figma frame */}
+      <div className="min-h-screen w-full bg-[#0f0f10] overflow-y-auto overflow-x-hidden flex justify-center">
+        {/* Spacer sized to the scaled frame height — transform doesn't shrink
+            layout footprint, so this keeps the scroll region correct. */}
+        <div style={{ width: MOBILE_W * mobileScale, height: MOBILE_H * mobileScale, position: "relative" }}>
         <div
           style={{
             width:           MOBILE_W,
             height:          MOBILE_H,
-            flexShrink:      0,
-            position:        "relative",
-            overflow:        "hidden",
+            position:        "absolute",
+            top:             0,
+            left:            0,
             transform:       `scale(${mobileScale})`,
-            transformOrigin: "center center",
+            transformOrigin: "top left",
           }}
         >
           {/* Form — Figma: left:16, top:84, gap:32 */}
@@ -230,6 +233,7 @@ export default function OnboardingPage() {
           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 21, display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 8 }}>
             <div style={{ width: 134, height: 5, borderRadius: 100, background: "#fff" }} />
           </div>
+        </div>
         </div>
       </div>
     );

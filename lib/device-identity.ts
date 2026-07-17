@@ -1,7 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 
 const DEVICE_ID_KEY = "arsenal_puzzle_device_id";
-const SESSION_KEY = "arsenal_puzzle_session";
 const USER_KEY = "arsenal_puzzle_user";
 
 export function getOrCreateDeviceId(): string {
@@ -33,19 +32,6 @@ export function storeUser(user: StoredUser): void {
 export function clearUser(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(USER_KEY);
-}
-
-export function createSessionToken(): string {
-  const token = uuidv4();
-  if (typeof window !== "undefined") {
-    sessionStorage.setItem(SESSION_KEY, token);
-  }
-  return token;
-}
-
-export function getSessionToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return sessionStorage.getItem(SESSION_KEY);
 }
 
 export interface StoredUser {

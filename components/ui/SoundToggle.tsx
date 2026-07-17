@@ -23,6 +23,10 @@ export function SoundToggle({ className }: SoundToggleProps) {
   const [muted, setMuted] = useState(false);
 
   useEffect(() => {
+    // Deliberately post-mount, not a lazy useState initializer — see comment
+    // above: reading localStorage during the initial render would mismatch
+    // the server-rendered HTML.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMuted(isSoundMuted());
   }, []);
 

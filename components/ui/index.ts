@@ -21,7 +21,7 @@ export type { ButtonProps, ButtonVariant }                      from "./Button";
 export type { ClubCardProps as ClubSelectionCardProps, ClubFloatIcon } from "./ClubCard";
 export type { DifficultyCardProps }                             from "./DifficultyCard";
 export type { Icon3DName, Icon3DProps }                         from "./Icon3D";
-export type { ImageCardProps, ClubCardProps, PuzzleCardProps }  from "./ImageCard";
+export type { ImageCardProps, PuzzleCardProps }                 from "./ImageCard";
 export type { ImagePreviewModalProps }                          from "./ImagePreviewModal";
 export type { InGameBadgeProps }                                from "./InGameBadge";
 export type { InputProps }                                      from "./Input";

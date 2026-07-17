@@ -78,10 +78,10 @@ export default function ClubPage() {
     return () => window.removeEventListener("resize", compute);
   }, []);
 
-  // Load puzzles for this club
+  // Load puzzles for this club — puzzlesLoading defaults to true, and this
+  // page remounts (fresh initial state) when navigating to a different club.
   useEffect(() => {
     if (!clubId) return;
-    setPuzzlesLoading(true);
     fetch(`/api/puzzles?clubId=${encodeURIComponent(clubId)}`)
       .then((r) => r.json())
       .then((data: { puzzles: Puzzle[] }) => {

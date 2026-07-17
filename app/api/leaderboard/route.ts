@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 
+// Shape returned by the joined .select() below — postgrest-js can't infer
+// join result types from a plain Database interface without full generated
+// relationship metadata, so this is asserted once here instead of casting
+// each field to `any` at every use site.
+interface LeaderboardRow {
+  id: string;
+  best_time_ms: number;
+  score: number;
+  difficulty: string;
+  updated_at: string;
+  users: { id: string; username: string; avatar_color: string } | null;
+  puzzles: { id: string; title: string } | null;
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const type = searchParams.get("type") ?? "global";
@@ -8,8 +22,7 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(parseInt(searchParams.get("limit") ?? "50"), 100);
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const supabase = getServiceClient() as any;
+    const supabase = getServiceClient();
 
     let query = supabase
       .from("leaderboard_entries")
@@ -48,15 +61,14 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Failed to fetch leaderboard" }, { status: 500 });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const entries = ((data ?? []) as any[]).map((row: any, i: number) => ({
+    const entries = ((data ?? []) as unknown as LeaderboardRow[]).map((row, i) => ({
       id: row.id,
       rank: i + 1,
-      user_id: (row.users as any)?.id,
-      username: (row.users as any)?.username ?? "Unknown",
-      avatar_color: (row.users as any)?.avatar_color ?? "#EF0107",
+      user_id: row.users?.id,
+      username: row.users?.username ?? "Unknown",
+      avatar_color: row.users?.avatar_color ?? "#EF0107",
       puzzle_id: puzzle_id ?? "",
-      puzzle_title: (row.puzzles as any)?.title ?? "",
+      puzzle_title: row.puzzles?.title ?? "",
       difficulty: row.difficulty,
       best_time_ms: row.best_time_ms,
       score: row.score,

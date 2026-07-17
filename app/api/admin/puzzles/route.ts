@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
 import { getServiceClient } from "@/lib/supabase";
+import { isAuthorizedAdmin } from "@/lib/admin-auth";
+
+const VALID_CLUB_IDS = ["arsenal", "barcelona", "inter", "bayern", "psg"] as const;
 
 export async function POST(req: NextRequest) {
+  if (!isAuthorizedAdmin(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   let supabase: ReturnType<typeof getServiceClient>;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    supabase = getServiceClient() as any;
+    supabase = getServiceClient();
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Unknown error";
     return NextResponse.json(
@@ -14,9 +20,6 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any;
 
   let form: FormData;
   try {
@@ -28,12 +31,16 @@ export async function POST(req: NextRequest) {
   const title = (form.get("title") as string | null)?.trim();
   const description = (form.get("description") as string | null)?.trim() || null;
   const difficulty = (form.get("difficulty") as string) || "medium";
+  const clubId = form.get("club_id") as string | null;
   const featured = form.get("featured") === "on";
   const active = form.get("active") === "on";
   const imageFile = form.get("image") as File | null;
 
   if (!title) {
     return NextResponse.json({ error: "Title is required" }, { status: 400 });
+  }
+  if (!clubId || !VALID_CLUB_IDS.includes(clubId as (typeof VALID_CLUB_IDS)[number])) {
+    return NextResponse.json({ error: "A valid club is required" }, { status: 400 });
   }
   if (!imageFile || imageFile.size === 0) {
     return NextResponse.json({ error: "Image file is required" }, { status: 400 });
@@ -52,7 +59,7 @@ export async function POST(req: NextRequest) {
     .jpeg({ quality: 90 })
     .toBuffer();
 
-  const { error: uploadError } = await db.storage
+  const { error: uploadError } = await supabase.storage
     .from("puzzle-images")
     .upload(filename, buffer, { contentType, upsert: false });
 
@@ -63,11 +70,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { data: urlData } = db.storage
+  const { data: urlData } = supabase.storage
     .from("puzzle-images")
     .getPublicUrl(filename);
 
-  const { data: puzzle, error: dbError } = await db
+  const { data: puzzle, error: dbError } = await supabase
     .from("puzzles")
     .insert({
       title,
@@ -75,6 +82,7 @@ export async function POST(req: NextRequest) {
       image_url: urlData.publicUrl,
       thumbnail_url: urlData.publicUrl,
       difficulty,
+      club_id: clubId,
       active,
       featured,
       play_count: 0,

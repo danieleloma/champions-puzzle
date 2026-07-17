@@ -1,14 +1,77 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Puzzle } from "@/types/puzzle";
+import { ADMIN_SECRET_HEADER } from "@/lib/admin-auth";
+import { CHAMPIONS } from "@/lib/champions-data";
+
+const ADMIN_SECRET_KEY = "arsenal_admin_secret";
+
+function AdminGate({ onUnlock }: { onUnlock: (secret: string) => void }) {
+  const [value, setValue] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setChecking(true);
+    try {
+      const res = await fetch("/api/admin/health", {
+        headers: { [ADMIN_SECRET_HEADER]: value },
+      });
+      if (res.status === 401) {
+        setError("Incorrect secret");
+        return;
+      }
+      sessionStorage.setItem(ADMIN_SECRET_KEY, value);
+      onUnlock(value);
+    } catch {
+      setError("Network error — try again");
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-arsenal-black flex items-center justify-center p-6">
+      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-3">
+        <h1 className="text-white font-black text-xl mb-2">Admin Access</h1>
+        <input
+          type="password"
+          autoFocus
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="Admin secret"
+          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-white/30 focus:outline-none focus:border-arsenal-red"
+        />
+        {error && <p className="text-red-400 text-sm">{error}</p>}
+        <button
+          type="submit"
+          disabled={checking || !value}
+          className="w-full bg-arsenal-red hover:bg-arsenal-red-dark text-white font-bold py-3 rounded-xl disabled:opacity-50 transition-colors"
+        >
+          {checking ? "Checking…" : "Unlock"}
+        </button>
+      </form>
+    </main>
+  );
+}
 
 export default function AdminPage() {
   const queryClient = useQueryClient();
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [secret, setSecret] = useState<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    // Post-mount read (not a lazy useState initializer) so server-rendered
+    // and pre-hydration client HTML both show the `undefined` (loading) case.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSecret(sessionStorage.getItem(ADMIN_SECRET_KEY));
+  }, []);
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-puzzles"],
@@ -20,6 +83,7 @@ export default function AdminPage() {
       }
       return res.json() as Promise<{ puzzles: Puzzle[] }>;
     },
+    enabled: !!secret,
   });
 
   const puzzles = data?.puzzles ?? [];
@@ -36,12 +100,17 @@ export default function AdminPage() {
     try {
       const res = await fetch("/api/admin/puzzles", {
         method: "POST",
+        headers: { [ADMIN_SECRET_HEADER]: secret ?? "" },
         body: form,
       });
 
       const body = await res.json();
 
       if (!res.ok) {
+        if (res.status === 401) {
+          sessionStorage.removeItem(ADMIN_SECRET_KEY);
+          setSecret(null);
+        }
         setUploadError(body.error ?? `Upload failed (HTTP ${res.status})`);
         return;
       }
@@ -56,6 +125,9 @@ export default function AdminPage() {
       setUploading(false);
     }
   }
+
+  if (secret === undefined) return null;
+  if (!secret) return <AdminGate onUnlock={setSecret} />;
 
   return (
     <main className="min-h-screen bg-arsenal-black p-6">
@@ -88,6 +160,21 @@ export default function AdminPage() {
               {["beginner", "easy", "medium"].map((d) => (
                 <option key={d} value={d} className="bg-[#1a1a1a]">
                   {d.charAt(0).toUpperCase() + d.slice(1)}
+                </option>
+              ))}
+            </select>
+            <select
+              name="club_id"
+              required
+              defaultValue=""
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-arsenal-red"
+            >
+              <option value="" disabled className="bg-[#1a1a1a]">
+                Select a club…
+              </option>
+              {CHAMPIONS.map((c) => (
+                <option key={c.id} value={c.id} className="bg-[#1a1a1a]">
+                  {c.club}
                 </option>
               ))}
             </select>
