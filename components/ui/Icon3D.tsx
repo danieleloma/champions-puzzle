@@ -33,7 +33,10 @@ export type Icon3DName =
   | "whistle"
   | "medal"
   | "arsenal"
-  | "barcelona";
+  | "barcelona"
+  | "inter"
+  | "bayern"
+  | "psg";
 
 const SRC: Record<Icon3DName, string> = {
   flag:               "/icons/3d/flag.png",
@@ -57,6 +60,9 @@ const SRC: Record<Icon3DName, string> = {
   medal:              "/icons/3d/medal.png",
   arsenal:            "/icons/3d/arsenal.png",
   barcelona:          "/icons/3d/barcelona.png",
+  inter:              "/icons/3d/inter.png",
+  bayern:             "/icons/3d/bayern.png",
+  psg:                "/icons/3d/psg.png",
 };
 
 export interface Icon3DProps

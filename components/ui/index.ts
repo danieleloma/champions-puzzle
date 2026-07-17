@@ -5,6 +5,7 @@ export { ClubCard }             from "./ClubCard";
 export { DifficultyCard }       from "./DifficultyCard";
 export { Icon3D }               from "./Icon3D";
 export { ImageCard }            from "./ImageCard";
+export { ImagePreviewModal }    from "./ImagePreviewModal";
 export { InGameBadge }          from "./InGameBadge";
 export { Input }                from "./Input";
 export { LeaderboardCard }      from "./LeaderboardCard";
@@ -12,6 +13,7 @@ export { MenuSwitcher }         from "./MenuSwitcher";
 export { ProgressBar }          from "./ProgressBar";
 export { PuzzleGridTiles }      from "./PuzzleGridTiles";
 export { PuzzleTypeGrid }       from "./PuzzleTypeGrid";
+export { SoundToggle }          from "./SoundToggle";
 
 export type { BadgeProps, BadgeVariant }                        from "./Badge";
 export type { BadgeContainerItem, BadgeContainerProps }         from "./BadgeContainer";
@@ -20,6 +22,7 @@ export type { ClubCardProps as ClubSelectionCardProps, ClubFloatIcon } from "./C
 export type { DifficultyCardProps }                             from "./DifficultyCard";
 export type { Icon3DName, Icon3DProps }                         from "./Icon3D";
 export type { ImageCardProps, ClubCardProps, PuzzleCardProps }  from "./ImageCard";
+export type { ImagePreviewModalProps }                          from "./ImagePreviewModal";
 export type { InGameBadgeProps }                                from "./InGameBadge";
 export type { InputProps }                                      from "./Input";
 export type { LeaderboardCardProps }                            from "./LeaderboardCard";
@@ -27,3 +30,4 @@ export type { MenuSwitcherProps, MenuSwitcherTab }              from "./MenuSwit
 export type { ProgressBarProps }                                from "./ProgressBar";
 export type { PuzzleGridTilesProps }                            from "./PuzzleGridTiles";
 export type { PuzzleTypeGridProps }                             from "./PuzzleTypeGrid";
+export type { SoundToggleProps }                                from "./SoundToggle";

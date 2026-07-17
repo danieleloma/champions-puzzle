@@ -10,7 +10,7 @@
 //    └── LeaderboardTable (gap:8 between cards)
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MenuSwitcher } from "@/components/ui/MenuSwitcher";
 import { LeaderboardTable } from "@/components/leaderboard/LeaderboardTable";
@@ -19,8 +19,12 @@ import { useLeaderboard } from "@/hooks/useLeaderboard";
 import { useLeaderboardStore } from "@/store/leaderboard-store";
 import type { LeaderboardType } from "@/types/leaderboard";
 
-const MOBILE_W = 440;
-const MOBILE_H = 926;
+const FRAME_W = 1440;
+const FRAME_H = 1024;
+
+// Shared desktop content-column width — matches champions/club/play so
+// switching between screens doesn't visibly shift or resize the content.
+const CONTENT_W = 648;
 
 const TABS: { value: LeaderboardType; label: string }[] = [
   { value: "global", label: "All Time" },
@@ -33,170 +37,193 @@ export default function LeaderboardPage() {
   const { activeTab, setTab } = useLeaderboardStore();
   useLeaderboard();
 
-  const [isMobile,    setIsMobile]    = useState(false);
-  const [mobileScale, setMobileScale] = useState(1);
+  const [isMobile, setIsMobile] = useState(false);
+  const [scale,    setScale]    = useState(1);
+  const [frameHeight, setFrameHeight] = useState(FRAME_H);
+  const frameRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const compute = () => {
       setIsMobile(window.innerWidth < 768);
-      setMobileScale(Math.min(window.innerWidth / MOBILE_W, window.innerHeight / MOBILE_H));
+      setScale(Math.min(window.innerWidth / FRAME_W, window.innerHeight / FRAME_H));
     };
     compute();
     window.addEventListener("resize", compute);
     return () => window.removeEventListener("resize", compute);
   }, []);
 
-  // ── Mobile layout — Figma node 21:900 (440 × 926) ──────────────────────────
+  // Track the frame's natural content height — a long leaderboard can push
+  // it past FRAME_H, and the outer spacer needs the *scaled* height so the
+  // page's scroll region matches what's actually visible (transform doesn't
+  // shrink an element's own layout footprint — see club/[clubId]/page.tsx).
+  useEffect(() => {
+    if (isMobile) return;
+    const el = frameRef.current;
+    if (!el) return;
+    const update = () => setFrameHeight(Math.max(FRAME_H, el.scrollHeight));
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [isMobile]);
+
+  // ── Mobile layout — Figma node 21:900, responsive flow (no scaled frame —
+  // that let content letterbox narrower than full width on shorter viewports,
+  // inconsistent with champions/club mobile) ─────────────────────────────────
   if (isMobile) {
     return (
-      <div className="fixed inset-0 bg-[#0f0f10] overflow-hidden flex items-center justify-center">
+      <div className="min-h-screen overflow-y-auto bg-[#0f0f10] relative">
 
-        {/* Scaled 440 × 926 Figma frame */}
+        {/* Medal — decorative, fixed to the viewport corner (Figma px values,
+            not rescaled — same convention as club/champions hero icons) */}
         <div
           style={{
-            width:           MOBILE_W,
-            height:          MOBILE_H,
-            flexShrink:      0,
-            position:        "relative",
-            overflow:        "hidden",
-            transform:       `scale(${mobileScale})`,
-            transformOrigin: "center center",
+            position:       "fixed",
+            left:           105,
+            bottom:         -192.3,
+            width:          597.302,
+            height:         597.302,
+            display:        "flex",
+            alignItems:     "center",
+            justifyContent: "center",
+            pointerEvents:  "none",
+            zIndex:         0,
+          }}
+        >
+          <div style={{ flexShrink: 0, transform: "rotate(16.63deg)" }}>
+            <Icon3D name="medal" size={480} loading="eager" />
+          </div>
+        </div>
+
+        {/* Content — full width, 16px margins, gap:24 */}
+        <div
+          style={{
+            position:      "relative",
+            zIndex:        1,
+            padding:       "84px 16px 40px",
+            display:       "flex",
+            flexDirection: "column",
+            gap:           24,
           }}
         >
 
-          {/* Medal — left:105, bottom:-192.3, container:597, img:480, rot:16.63° */}
-          <div
-            style={{
-              position:       "absolute",
-              left:           105,
-              bottom:         -192.3,
-              width:          597.302,
-              height:         597.302,
-              display:        "flex",
-              alignItems:     "center",
-              justifyContent: "center",
-              pointerEvents:  "none",
-              zIndex:         0,
-            }}
-          >
-            <div style={{ flexShrink: 0, transform: "rotate(16.63deg)" }}>
-              <Icon3D name="medal" size={480} loading="eager" />
-            </div>
-          </div>
+          {/* Header row — back button + centred title */}
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", width: "100%" }}>
 
-          {/* Content — centred, top:84, width:408, gap:24 */}
-          <div
-            style={{
-              position:      "absolute",
-              left:          "50%",
-              transform:     "translateX(-50%)",
-              top:           84,
-              width:         408,
-              display:       "flex",
-              flexDirection: "column",
-              gap:           24,
-              zIndex:        1,
-            }}
-          >
-
-            {/* Header row — back button + centred title */}
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", width: "100%" }}>
-
-              {/* Back — 32×32 bordered, inside a 52px-wide holder */}
-              <div style={{ width: 52, display: "flex", alignItems: "center" }}>
-                <button
-                  onClick={() => router.back()}
-                  aria-label="Go back"
-                  style={{
-                    border:          "1px solid #73767b",
-                    borderRadius:    4,
-                    width:           32,
-                    height:          32,
-                    display:         "flex",
-                    alignItems:      "center",
-                    justifyContent:  "center",
-                    background:      "transparent",
-                    cursor:          "pointer",
-                    flexShrink:      0,
-                  }}
-                >
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
-                    <path d="M12.5 15L7.5 10L12.5 5" stroke="#73767b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Title — flex-1, centred */}
-              <div style={{ flex: "1 0 0", minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                <h1 style={{ fontFamily: "var(--font-boldonse), sans-serif", fontSize: 20, lineHeight: "normal", color: "#fff", margin: 0 }}>
-                  Leaderboard
-                </h1>
-                <p style={{ fontFamily: "var(--font-geist-mono), monospace", fontWeight: 500, fontSize: 15, lineHeight: "normal", letterSpacing: "-0.75px", color: "#929498", margin: 0 }}>
-                  GUNFC Rankings
-                </p>
-              </div>
-
-              {/* Right spacer balances the 52px back container */}
-              <div style={{ width: 52, flexShrink: 0 }} aria-hidden />
+            {/* Back — 32×32 bordered, inside a 52px-wide holder */}
+            <div style={{ width: 52, display: "flex", alignItems: "center" }}>
+              <button
+                onClick={() => router.back()}
+                aria-label="Go back"
+                style={{
+                  border:          "1px solid #73767b",
+                  borderRadius:    4,
+                  width:           32,
+                  height:          32,
+                  display:         "flex",
+                  alignItems:      "center",
+                  justifyContent:  "center",
+                  background:      "transparent",
+                  cursor:          "pointer",
+                  flexShrink:      0,
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
+                  <path d="M12.5 15L7.5 10L12.5 5" stroke="#73767b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
             </div>
 
-            {/* Tab switcher */}
-            <MenuSwitcher tabs={TABS} value={activeTab} onChange={setTab} />
-
-            {/* Leaderboard cards */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
-              <LeaderboardTable />
+            {/* Title — flex-1, centred */}
+            <div style={{ flex: "1 0 0", minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+              <h1 style={{ fontFamily: "var(--font-boldonse), sans-serif", fontSize: 20, lineHeight: "normal", color: "#fff", margin: 0 }}>
+                Leaderboard
+              </h1>
+              <p style={{ fontFamily: "var(--font-geist-mono), monospace", fontWeight: 500, fontSize: 15, lineHeight: "normal", letterSpacing: "-0.75px", color: "#929498", margin: 0 }}>
+                GUNFC Rankings
+              </p>
             </div>
+
+            {/* Right spacer balances the 52px back container */}
+            <div style={{ width: 52, flexShrink: 0 }} aria-hidden />
           </div>
 
-          {/* Home indicator */}
-          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 21, display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 8 }}>
-            <div style={{ width: 134, height: 5, borderRadius: 100, background: "#fff" }} />
-          </div>
+          {/* Tab switcher */}
+          <MenuSwitcher tabs={TABS} value={activeTab} onChange={setTab} />
 
+          {/* Leaderboard cards */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
+            <LeaderboardTable />
+          </div>
         </div>
       </div>
     );
   }
 
-  // ── Desktop layout ──────────────────────────────────────────────────────────
+  // ── Desktop layout — scaled Figma frame, same technique as champions/club/
+  // play (previously this page used plain unscaled flow, which rendered its
+  // content at a visibly different actual size than those pages whenever the
+  // viewport was shorter than FRAME_H — the "screen jump" when navigating).
+  // Not `fixed`/`overflow-hidden`: frameHeight is a floor, not a ceiling, so
+  // a long leaderboard grows the page and scrolls instead of clipping.
   return (
-    <main className="relative min-h-screen bg-[#0f0f10] overflow-hidden">
-      {/* Medal decoration */}
-      <div
-        className="absolute bottom-[-60px] right-[-70px] pointer-events-none select-none z-0"
-        style={{ transform: "rotate(16.63deg)" }}
-      >
-        <img src="/icons/3d/medal.png" alt="" width={220} height={220} />
-      </div>
-
-      {/* Header */}
-      <div className="relative z-10 flex items-center justify-between px-4 pt-12 pb-4">
-        <button
-          onClick={() => router.back()}
-          className="flex items-center justify-center border border-[#73767b] rounded-[4px] h-8 w-8 shrink-0"
-          aria-label="Go back"
+    <div className="min-h-screen w-full bg-[#0f0f10] flex flex-col items-center overflow-x-hidden">
+      <div style={{ width: FRAME_W * scale, height: frameHeight * scale, position: "relative" }}>
+        <div
+          ref={frameRef}
+          style={{
+            width:           FRAME_W,
+            minHeight:       FRAME_H,
+            position:        "absolute",
+            top:             0,
+            left:            0,
+            transform:       `scale(${scale})`,
+            transformOrigin: "top left",
+          }}
         >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M12.5 15L7.5 10L12.5 5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+          {/* Medal decoration */}
+          <div
+            className="absolute bottom-[-60px] right-[-70px] pointer-events-none select-none z-0"
+            style={{ transform: "rotate(16.63deg)" }}
+          >
+            <img src="/icons/3d/medal.png" alt="" width={220} height={220} />
+          </div>
 
-        <div className="flex flex-col items-center">
-          <h1 className="font-boldonse text-white text-[20px] leading-normal">Leaderboard</h1>
-          <p className="font-mono font-medium text-[15px] text-[#929498] tracking-[-0.75px] leading-normal">
-            GUNFC Rankings
-          </p>
+          {/* Header — centred, width CONTENT_W (matches content below) */}
+          <div
+            style={{ position: "absolute", left: "50%", top: 57, transform: "translateX(-50%)", width: CONTENT_W, zIndex: 10 }}
+            className="flex items-center justify-between"
+          >
+            <button
+              onClick={() => router.back()}
+              className="flex items-center justify-center border border-[#73767b] rounded-[4px] h-8 w-8 shrink-0"
+              aria-label="Go back"
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M12.5 15L7.5 10L12.5 5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+
+            <div className="flex flex-col items-center">
+              <h1 className="font-boldonse text-white text-[20px] leading-normal">Leaderboard</h1>
+              <p className="font-mono font-medium text-[15px] text-[#929498] tracking-[-0.75px] leading-normal">
+                GUNFC Rankings
+              </p>
+            </div>
+
+            <div className="w-8 shrink-0" aria-hidden />
+          </div>
+
+          {/* Content — centred, width CONTENT_W (matches header above) */}
+          <div
+            style={{ position: "absolute", left: "50%", top: 160, transform: "translateX(-50%)", width: CONTENT_W, zIndex: 10 }}
+            className="flex flex-col gap-10 pb-24"
+          >
+            <MenuSwitcher tabs={TABS} value={activeTab} onChange={setTab} />
+            <LeaderboardTable />
+          </div>
         </div>
-
-        <div className="w-8 shrink-0" aria-hidden />
       </div>
-
-      {/* Content */}
-      <div className="relative z-10 mx-auto px-4 flex flex-col gap-10 mt-6 pb-24" style={{ width: 684 }}>
-        <MenuSwitcher tabs={TABS} value={activeTab} onChange={setTab} />
-        <LeaderboardTable />
-      </div>
-    </main>
+    </div>
   );
 }

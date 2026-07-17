@@ -106,7 +106,7 @@ export const CHAMPIONS: Champion[] = [
     skyColor:     "#bfdbfe",
     gradFrom:    "#1d4ed8",
     gradTo:      "#0c1a4e",
-    badgeLetter: "I",
+    badgeIcon:   "inter",
     floatIcons: [
       { name: "cup",   right:  -8, top: 138, size: 105, imgSize:  78, deg:  25 },
       { name: "scarf", right: -18, top: -12, size: 108, imgSize:  78, deg: -38 },
@@ -129,7 +129,7 @@ export const CHAMPIONS: Champion[] = [
     skyColor:     "#fca5a5",
     gradFrom:    "#dc2626",
     gradTo:      "#7f1d1d",
-    badgeLetter: "B",
+    badgeIcon:   "bayern",
     floatIcons: [
       { name: "boot",         right:  -8, top: 142, size: 103, imgSize:  76, deg:  22 },
       { name: "captain-band", right: -18, top: -12, size: 107, imgSize:  76, deg: -38 },
@@ -152,7 +152,7 @@ export const CHAMPIONS: Champion[] = [
     skyColor:     "#93c5fd",
     gradFrom:    "#0059a1",
     gradTo:      "#00285a",
-    badgeLetter: "P",
+    badgeIcon:   "psg",
     floatIcons: [
       { name: "jersey",    right:  -8, top: 140, size: 104, imgSize:  77, deg:  30 },
       { name: "flag",      right: -20, top: -13, size: 107, imgSize:  77, deg: -42 },

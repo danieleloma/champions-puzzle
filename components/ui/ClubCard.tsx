@@ -8,11 +8,12 @@ import { playClick } from "@/lib/sounds";
 // ── Figma node 98:1204 "Club container" ──────────────────────────────────────
 //
 //  196×260px  rounded-[24px]  overflow-hidden
+//  Whole card is clickable (onPlay) — no separate PLAY button.
 //
 //  With imageSrc (Figma design):
 //    Full-bleed PNG (392×520 @2×) covers the card.
 //    Vignette, badge and floating icons are baked into the image.
-//    Card info (name, league, PLAY) overlaid at absolute bottom-14 left-10.
+//    Card info (name, league) overlaid at absolute bottom-14 left-10.
 //
 //  Without imageSrc (programmatic fallback):
 //    3-stop gradient (skyColor → gradFrom → gradTo) background.
@@ -22,8 +23,6 @@ import { playClick } from "@/lib/sounds";
 //    flex-col gap-16 items-start
 //      Club name : Boldonse 20px  leading-normal  white
 //      League    : Geist Med 13px lh-16px  #dedfe0
-//    PLAY button : rounded-[1000px]  px-14 py-7  bg #f4f4f4  black
-//                  Boldonse 13px  lh-20px  tracking-[-0.23px]
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface ClubFloatIcon {
@@ -66,8 +65,15 @@ export function ClubCard({
 }: ClubCardProps) {
   return (
     <div
+      role="button"
+      tabIndex={0}
+      onClick={() => { playClick(); onPlay?.(); }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); playClick(); onPlay?.(); }
+      }}
       className={cn(
         "relative w-[196px] h-[260px] rounded-[24px] overflow-hidden shrink-0",
+        "cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.99]",
         className,
       )}
     >
@@ -137,14 +143,6 @@ export function ClubCard({
             {league}
           </p>
         </div>
-
-        <button
-          type="button"
-          onClick={() => { playClick(); onPlay?.(); }}
-          className="bg-[#f4f4f4] text-black rounded-[1000px] px-[14px] py-[7px] font-boldonse text-[13px] leading-5 tracking-[-0.23px] whitespace-nowrap border-none cursor-pointer"
-        >
-          PLAY
-        </button>
       </div>
     </div>
   );

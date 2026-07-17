@@ -1,6 +1,33 @@
 // Web Audio API sound synthesis — no external files, works offline.
 // All sounds triggered by user gestures so autoplay policy is never an issue.
 
+const MUTE_KEY = "arsenal_puzzle_sound_muted";
+
+let _muted: boolean | null = null;
+
+function readMuted(): boolean {
+  if (_muted !== null) return _muted;
+  if (typeof window === "undefined") return false;
+  _muted = window.localStorage.getItem(MUTE_KEY) === "1";
+  return _muted;
+}
+
+export function isSoundMuted(): boolean {
+  return readMuted();
+}
+
+export function setSoundMuted(muted: boolean) {
+  _muted = muted;
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(MUTE_KEY, muted ? "1" : "0");
+  }
+}
+
+export function toggleSoundMuted(): boolean {
+  setSoundMuted(!readMuted());
+  return _muted as boolean;
+}
+
 let _ctx: AudioContext | null = null;
 
 function ctx(): AudioContext {
@@ -21,6 +48,7 @@ function burst(
   freqEnd?: number,
   delay = 0,
 ) {
+  if (readMuted()) return;
   const c = ctx();
   const t = c.currentTime + delay;
   const osc  = c.createOscillator();
