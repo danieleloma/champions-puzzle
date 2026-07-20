@@ -123,10 +123,12 @@ export function Badge({
           </span>
         </div>
 
-        {/* Username + XP */}
+        {/* Username + XP — username collapses away on mobile, leaving just
+            the avatar initial + XP (matches the md: 768px isMobile breakpoint
+            used everywhere else in this app). */}
         <div className="flex items-center gap-1 whitespace-nowrap">
           {/* Geist Medium 14px / lh 20px */}
-          <span className="font-sans font-medium text-sm leading-5 text-white">
+          <span className="hidden md:inline font-sans font-medium text-sm leading-5 text-white">
             {username}
           </span>
           {/* Geist Mono Medium 14px / lh 20px — XP in yellow */}
