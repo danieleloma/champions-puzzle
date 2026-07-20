@@ -30,6 +30,7 @@ const LEAGUES = [
   { value: "serie-a",        label: "Serie A"        },
   { value: "bundesliga",     label: "Bundesliga"     },
   { value: "ligue-1",        label: "Ligue 1"        },
+  { value: "world-cup",      label: "World Cup"      },
 ] as const;
 
 // ── Page ──────────────────────────────────────────────────────────────────────

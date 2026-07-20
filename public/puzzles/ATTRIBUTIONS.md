@@ -57,6 +57,12 @@ somewhere attribution isn't otherwise implied.
 - **03-ucl-final-parc-des-princes-2026.jpg** — "Finale de la ligue des champions 2025-2026 au parc des princes" by Terre Intègre, CC0.
   Source: https://commons.wikimedia.org/wiki/File:Finale_de_la_ligue_des_champions_2025-2026_au_parc_des_princes.jpg
 
+## Spain (World Cup)
+
+- **01-world-cup-final-yamal-2026.jpg** — "Spain World Cup Winners, Argentina v Spain, 19 July 2026" by Bryan Berlin, CC BY-SA 4.0.
+  Spain's squad, including Lamine Yamal, celebrate on the podium after beating Argentina in the final.
+  Source: https://commons.wikimedia.org/wiki/File:Spain_World_Cup_Winners_Argentina_v_Spain_19_July_2026-1.jpg
+
 All files were downloaded from Wikimedia Commons and center-cropped to a 1:1
 square (with a 1200×1200 main image and 400×400 thumbnail) to match the
 puzzle board's square tile-slicing — the crop does not alter the licensed work

@@ -156,6 +156,12 @@ const SOCCER_ICONS = [
     accentColor: "white and royal blue French tricolor accents",
   },
   {
+    label: "Spain Emblem",
+    iconName: "Spain national football team shield crest emblem topped with a royal crown",
+    primaryColor: "vivid red and golden yellow",
+    accentColor: "royal navy blue crown detail with gold trim border",
+  },
+  {
     label: "Arsenal Crest",
     iconName: "Arsenal FC shield crest with a bold cannon on the front",
     primaryColor: "vivid red",

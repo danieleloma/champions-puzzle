@@ -165,6 +165,32 @@ export const CHAMPIONS: Champion[] = [
       { name: "scarf",    left:  67, top: 166, deg:   0   },
     ],
   },
+  {
+    id:           "spain",
+    club:         "Spain",
+    league:       "FIFA World Cup",
+    leagueKey:    "world-cup",
+    leagueTitle:  "WORLD CUP CHAMPIONS",
+    // No pre-composited Figma card art for this one — falls back to the
+    // programmatic gradient + floatIcons + badgeLetter mode ClubCard/
+    // ImageCard already support (see components/ui/ClubCard.tsx).
+    cardImageSrc: "",
+    skyColor:     "#ffe08a",
+    gradFrom:    "#c60b1e",
+    gradTo:      "#5a0510",
+    badgeLetter: "S",
+    floatIcons: [
+      { name: "cup",   right:  -8, top: 140, size: 104, imgSize:  77, deg:  26 },
+      { name: "flag",  right: -19, top: -13, size: 107, imgSize:  77, deg: -39 },
+      { name: "medal", right:  87, top:  59, size: 134, imgSize: 103, deg: -21 },
+    ],
+    heroIcons: [
+      { name: "cup",       left: -46, top: 108, deg:   0   },
+      { name: "flag",      left: 207, top: 101, deg: -24   },
+      { name: "medal",     left: 315, top: -14, deg: -28   },
+      { name: "stopwatch", left:  66, top: 164, deg:   0   },
+    ],
+  },
 ];
 
 export function getChampion(id: string): Champion | undefined {
