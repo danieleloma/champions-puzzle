@@ -25,12 +25,12 @@ import { CHAMPIONS } from "@/lib/champions-data";
 const CONTENT_W = 648;
 
 const LEAGUES = [
+  { value: "world-cup",      label: "World Cup"      },
   { value: "premier-league", label: "Premier League" },
   { value: "la-liga",        label: "La Liga"        },
   { value: "serie-a",        label: "Serie A"        },
   { value: "bundesliga",     label: "Bundesliga"     },
   { value: "ligue-1",        label: "Ligue 1"        },
-  { value: "world-cup",      label: "World Cup"      },
 ] as const;
 
 // ── Page ──────────────────────────────────────────────────────────────────────
