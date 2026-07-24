@@ -1,12 +1,22 @@
 "use client";
 
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 
 // ── Fullscreen puzzle image preview ──────────────────────────────────────────
 // Opened by the "View" badge on a puzzle card — lets the user inspect the
 // full-resolution artwork before committing to a difficulty/play session.
 // Closes on backdrop click, close button, or Escape.
+//
+// Rendered via a portal straight into document.body: every page under
+// app/(main)/layout.tsx sits inside that layout's `transform: scale(...)`
+// frame (the desktop Figma-scale wrapper), and a `transform` on any
+// ancestor becomes the containing block for `position: fixed` descendants —
+// so without the portal this modal's fixed inset-0 backdrop would fill the
+// scaled 1440x1024 frame box instead of the real viewport, leaving the
+// close button correctly placed but the backdrop not actually covering the
+// screen edge-to-edge (same root cause as the VictoryScreen fix).
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface ImagePreviewModalProps {
@@ -29,7 +39,7 @@ export function ImagePreviewModal({ src, title, onClose }: ImagePreviewModalProp
     };
   }, [onClose]);
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-6"
       onClick={onClose}
@@ -67,6 +77,7 @@ export function ImagePreviewModal({ src, title, onClose }: ImagePreviewModalProp
           {title}
         </span>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
