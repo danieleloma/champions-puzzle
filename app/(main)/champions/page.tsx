@@ -24,13 +24,17 @@ import { CHAMPIONS } from "@/lib/champions-data";
 // Matches CONTENT_W in app/(main)/layout.tsx
 const CONTENT_W = 648;
 
+// Order = latest first: World Cup final → Champions League final (after all
+// domestic leagues finish) → Premier League/La Liga/Serie A (same final
+// weekend) → Bundesliga/Ligue 1 (~1 week earlier).
 const LEAGUES = [
-  { value: "world-cup",      label: "World Cup"      },
-  { value: "premier-league", label: "Premier League" },
-  { value: "la-liga",        label: "La Liga"        },
-  { value: "serie-a",        label: "Serie A"        },
-  { value: "bundesliga",     label: "Bundesliga"     },
-  { value: "ligue-1",        label: "Ligue 1"        },
+  { value: "world-cup",        label: "World Cup"        },
+  { value: "champions-league", label: "Champions League" },
+  { value: "premier-league",   label: "Premier League"   },
+  { value: "la-liga",          label: "La Liga"          },
+  { value: "serie-a",          label: "Serie A"          },
+  { value: "bundesliga",       label: "Bundesliga"       },
+  { value: "ligue-1",          label: "Ligue 1"          },
 ] as const;
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -53,7 +57,7 @@ export default function ChampionsPage() {
   }
 
   const visible = activeLeague
-    ? CHAMPIONS.filter((c) => c.leagueKey === activeLeague)
+    ? CHAMPIONS.filter((c) => c.leagueKeys.includes(activeLeague))
     : CHAMPIONS;
 
   // ── Mobile ──────────────────────────────────────────────────────────────

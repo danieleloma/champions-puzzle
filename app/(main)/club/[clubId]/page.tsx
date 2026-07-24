@@ -231,6 +231,19 @@ export default function ClubPage() {
             <span
               style={{
                 fontFamily:    "var(--font-boldonse), sans-serif",
+                fontSize:      18,
+                lineHeight:    "normal",
+                letterSpacing: "-0.9px",
+                textTransform: "uppercase",
+                color:         "#fcff3f",
+                whiteSpace:    "nowrap",
+              }}
+            >
+              {club.club}
+            </span>
+            <span
+              style={{
+                fontFamily:    "var(--font-boldonse), sans-serif",
                 fontSize:      32,
                 lineHeight:    "normal",
                 letterSpacing: "-1.6px",
@@ -454,6 +467,19 @@ export default function ClubPage() {
               pointerEvents: "none",
             }}
           >
+            <span
+              style={{
+                fontFamily:    "var(--font-boldonse), sans-serif",
+                fontSize:      18,
+                lineHeight:    "normal",
+                letterSpacing: "-0.9px",
+                textTransform: "uppercase",
+                color:         "#fcff3f",
+                whiteSpace:    "nowrap",
+              }}
+            >
+              {club.club}
+            </span>
             {/* Boldonse 32px / tracking -1.6px */}
             <span
               style={{

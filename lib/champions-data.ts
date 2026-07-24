@@ -28,7 +28,8 @@ export interface Champion {
   id:            string;
   club:          string;
   league:        string;
-  leagueKey:     string;
+  /** League filter badges this club matches — some clubs won more than one title (e.g. PSG: Ligue 1 + Champions League) */
+  leagueKeys:    string[];
   /** Hero subtitle  e.g. "PREMIER LEAGUE CHAMPIONS" */
   leagueTitle:   string;
   /** Pre-composited card image used on the /champions selection screen */
@@ -48,12 +49,65 @@ export interface Champion {
 // Figma node 29:2549 — hero container is 408×225 px.
 // Ghost icon positions: left = center_x − 61.5  (halfSize of 123px icon).
 // From Figma: cx = 50%±offset → at 408px frame, 50% = 204px.
+//
+// Order = latest champion first (2025/26 season): World Cup final (Jul 19) →
+// Champions League final (after all domestic leagues finish) → Premier
+// League/La Liga/Serie A (same final weekend) → Bundesliga/Ligue 1 (~1 week
+// earlier). PSG is placed by its latest title (Champions League), though it
+// also won Ligue 1.
 export const CHAMPIONS: Champion[] = [
+  {
+    id:           "spain",
+    club:         "Spain",
+    league:       "FIFA World Cup",
+    leagueKeys:   ["world-cup"],
+    leagueTitle:  "WORLD CUP CHAMPIONS",
+    // Card art from Figma node 166:1358 ("Club container, Property 2=Spain").
+    cardImageSrc: "/clubs/spain.png",
+    skyColor:     "#ffe08a",
+    gradFrom:    "#c60b1e",
+    gradTo:      "#5a0510",
+    badgeIcon:   "spain",
+    floatIcons: [
+      { name: "cup",   right:  -8, top: 140, size: 104, imgSize:  77, deg:  26 },
+      { name: "flag",  right: -19, top: -13, size: 107, imgSize:  77, deg: -39 },
+      { name: "medal", right:  87, top:  59, size: 134, imgSize: 103, deg: -21 },
+    ],
+    heroIcons: [
+      { name: "cup",       left: -46, top: 108, deg:   0   },
+      { name: "flag",      left: 207, top: 101, deg: -24   },
+      { name: "medal",     left: 315, top: -14, deg: -28   },
+      { name: "stopwatch", left:  66, top: 164, deg:   0   },
+    ],
+  },
+  {
+    id:           "psg",
+    club:         "PSG",
+    league:       "French Ligue 1 · UCL",
+    leagueKeys:   ["ligue-1", "champions-league"],
+    leagueTitle:  "LIGUE 1 CHAMPIONS",
+    cardImageSrc: "/clubs/psg.png",
+    skyColor:     "#93c5fd",
+    gradFrom:    "#0059a1",
+    gradTo:      "#00285a",
+    badgeIcon:   "psg",
+    floatIcons: [
+      { name: "jersey",    right:  -8, top: 140, size: 104, imgSize:  77, deg:  30 },
+      { name: "flag",      right: -20, top: -13, size: 107, imgSize:  77, deg: -42 },
+      { name: "stopwatch", right:  89, top:  61, size: 133, imgSize: 103, deg: -22 },
+    ],
+    heroIcons: [
+      { name: "flag",     left: -47, top: 109, deg:   0   },
+      { name: "jersey",   left: 209, top: 102, deg: -23   },
+      { name: "whistle",  left: 316, top: -12, deg: -29   },
+      { name: "scarf",    left:  67, top: 166, deg:   0   },
+    ],
+  },
   {
     id:           "arsenal",
     club:         "Arsenal",
     league:       "English Premier League",
-    leagueKey:    "premier-league",
+    leagueKeys:   ["premier-league"],
     leagueTitle:  "PREMIER LEAGUE CHAMPIONS",
     cardImageSrc: "/clubs/arsenal.png",
     skyColor:     "#ffb3b4",
@@ -77,7 +131,7 @@ export const CHAMPIONS: Champion[] = [
     id:           "barcelona",
     club:         "Barcelona",
     league:       "Spanish La Liga",
-    leagueKey:    "la-liga",
+    leagueKeys:   ["la-liga"],
     leagueTitle:  "LA LIGA CHAMPIONS",
     cardImageSrc: "/clubs/barcelona.png",
     skyColor:     "#93c5fd",
@@ -100,7 +154,7 @@ export const CHAMPIONS: Champion[] = [
     id:           "inter",
     club:         "Inter Milan",
     league:       "Italian Serie A",
-    leagueKey:    "serie-a",
+    leagueKeys:   ["serie-a"],
     leagueTitle:  "SERIE A CHAMPIONS",
     cardImageSrc: "/clubs/inter.png",
     skyColor:     "#bfdbfe",
@@ -123,7 +177,7 @@ export const CHAMPIONS: Champion[] = [
     id:           "bayern",
     club:         "Bayern Munich",
     league:       "German Bundesliga",
-    leagueKey:    "bundesliga",
+    leagueKeys:   ["bundesliga"],
     leagueTitle:  "BUNDESLIGA CHAMPIONS",
     cardImageSrc: "/clubs/bayern.png",
     skyColor:     "#fca5a5",
@@ -140,55 +194,6 @@ export const CHAMPIONS: Champion[] = [
       { name: "ball",         left: 206, top: 101, deg: -24   },
       { name: "boot",         left: 314, top: -15, deg: -27   },
       { name: "stopwatch",    left:  65, top: 164, deg:   0   },
-    ],
-  },
-  {
-    id:           "psg",
-    club:         "PSG",
-    league:       "French Ligue 1",
-    leagueKey:    "ligue-1",
-    leagueTitle:  "LIGUE 1 CHAMPIONS",
-    cardImageSrc: "/clubs/psg.png",
-    skyColor:     "#93c5fd",
-    gradFrom:    "#0059a1",
-    gradTo:      "#00285a",
-    badgeIcon:   "psg",
-    floatIcons: [
-      { name: "jersey",    right:  -8, top: 140, size: 104, imgSize:  77, deg:  30 },
-      { name: "flag",      right: -20, top: -13, size: 107, imgSize:  77, deg: -42 },
-      { name: "stopwatch", right:  89, top:  61, size: 133, imgSize: 103, deg: -22 },
-    ],
-    heroIcons: [
-      { name: "flag",     left: -47, top: 109, deg:   0   },
-      { name: "jersey",   left: 209, top: 102, deg: -23   },
-      { name: "whistle",  left: 316, top: -12, deg: -29   },
-      { name: "scarf",    left:  67, top: 166, deg:   0   },
-    ],
-  },
-  {
-    id:           "spain",
-    club:         "Spain",
-    league:       "FIFA World Cup",
-    leagueKey:    "world-cup",
-    leagueTitle:  "WORLD CUP CHAMPIONS",
-    // No pre-composited Figma card art for this one — falls back to the
-    // programmatic gradient + floatIcons + badgeLetter mode ClubCard/
-    // ImageCard already support (see components/ui/ClubCard.tsx).
-    cardImageSrc: "",
-    skyColor:     "#ffe08a",
-    gradFrom:    "#c60b1e",
-    gradTo:      "#5a0510",
-    badgeLetter: "S",
-    floatIcons: [
-      { name: "cup",   right:  -8, top: 140, size: 104, imgSize:  77, deg:  26 },
-      { name: "flag",  right: -19, top: -13, size: 107, imgSize:  77, deg: -39 },
-      { name: "medal", right:  87, top:  59, size: 134, imgSize: 103, deg: -21 },
-    ],
-    heroIcons: [
-      { name: "cup",       left: -46, top: 108, deg:   0   },
-      { name: "flag",      left: 207, top: 101, deg: -24   },
-      { name: "medal",     left: 315, top: -14, deg: -28   },
-      { name: "stopwatch", left:  66, top: 164, deg:   0   },
     ],
   },
 ];

@@ -3,7 +3,7 @@ import sharp from "sharp";
 import { getServiceClient } from "@/lib/supabase";
 import { isAuthorizedAdmin } from "@/lib/admin-auth";
 
-const VALID_CLUB_IDS = ["arsenal", "barcelona", "inter", "bayern", "psg"] as const;
+const VALID_CLUB_IDS = ["arsenal", "barcelona", "inter", "bayern", "psg", "spain"] as const;
 
 export async function POST(req: NextRequest) {
   if (!isAuthorizedAdmin(req)) {
