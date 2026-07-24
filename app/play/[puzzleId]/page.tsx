@@ -724,15 +724,21 @@ export default function PlayPage() {
           </>
         )}
 
-        {/* ── Victory overlay ─────────────────────────────────────────── */}
-        {isCompleted && (
-          <VictoryScreen
-            onReplay={resetGame}
-            onHome={() => router.push("/champions")}
-          />
-        )}
-
       </div>
+
+      {/* ── Victory overlay ───────────────────────────────────────────────
+          Rendered as a sibling of the scaled frame, not inside it: that
+          frame has `transform: scale(...)`, which makes it the containing
+          block for any `position: fixed` descendant (per the CSS spec) —
+          VictoryScreen's own fixed inset-0 overlay would then fill the
+          1440×1024 frame box instead of the real viewport, leaving the
+          page's #0f0f10 background exposed as bars on wider screens. ── */}
+      {isCompleted && (
+        <VictoryScreen
+          onReplay={resetGame}
+          onHome={() => router.push("/champions")}
+        />
+      )}
     </div>
   );
 }
