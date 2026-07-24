@@ -14,6 +14,33 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react", "animejs"],
   },
+  // /public assets have unhashed filenames, so Vercel serves them with
+  // `max-age=0, must-revalidate` by default — every page view re-checks
+  // every icon/photo with the origin. These four directories (3D icons,
+  // club cards, puzzle photos, splash backgrounds) are asset-pipeline
+  // output that's only ever replaced by generating a new filename (see
+  // PERFORMANCE.md), never edited in place, so it's safe to cache them
+  // aggressively like /_next/static's content-hashed files.
+  async headers() {
+    return [
+      {
+        source: "/icons/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+      {
+        source: "/clubs/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+      {
+        source: "/puzzles/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+      {
+        source: "/splash/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+    ];
+  },
 };
 
 // Only wraps the build with Sentry's plugin (source-map upload, etc.) once a

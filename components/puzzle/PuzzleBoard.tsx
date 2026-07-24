@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import {
   DndContext,
   DragEndEvent,
@@ -216,10 +217,12 @@ export function PuzzleBoard({ imageUrl, size, showProgress = true }: PuzzleBoard
           >
             {previewMode ? (
               // Preview: full assembled image
-              <img
+              <Image
                 src={imageUrl}
                 alt="Puzzle preview"
-                style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: TILE_RADIUS }}
+                fill
+                sizes="(max-width: 768px) 100vw, 480px"
+                style={{ objectFit: "cover", borderRadius: TILE_RADIUS }}
               />
             ) : (
               orderedTiles.map((tile) => (

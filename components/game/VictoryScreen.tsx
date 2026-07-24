@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useGameStore } from "@/store/game-store";
 import { useUserStore } from "@/store/user-store";
 import { formatTime, calculateScore, calculateXP } from "@/lib/score-calculator";
@@ -319,8 +320,7 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
 
         {/* Cloud bg — fixed, fills viewport regardless of scroll/frame size */}
         <div className="fixed inset-0 pointer-events-none" style={{ filter: "blur(15px)", opacity: 0.6, zIndex: 0 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/splash/bg-clouds.png" alt="" style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }} />
+          <Image src="/splash/bg-clouds.webp" alt="" fill sizes="100vw" style={{ objectFit: "cover" }} />
         </div>
 
         {/* Spacer sized to the scaled frame height — transform doesn't shrink
@@ -375,8 +375,7 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
 
       {/* Cloud background — stretches edge-to-edge */}
       <div className="absolute inset-0 pointer-events-none" style={{ filter: "blur(15px)", opacity: 0.6 }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/splash/bg-clouds.png" alt="" style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }} />
+        <Image src="/splash/bg-clouds.webp" alt="" fill sizes="100vw" style={{ objectFit: "cover" }} />
       </div>
 
       {/* Scaled Figma frame — icons + card */}

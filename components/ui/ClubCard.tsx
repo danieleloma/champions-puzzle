@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Icon3D } from "@/components/ui/Icon3D";
 import type { Icon3DName } from "@/components/ui/Icon3D";
@@ -79,11 +80,12 @@ export function ClubCard({
     >
       {imageSrc ? (
         /* ── Figma mode: full-bleed pre-composited image ───────────── */
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <Image
           src={imageSrc}
           alt={club}
-          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          fill
+          sizes="196px"
+          className="object-cover pointer-events-none"
         />
       ) : (
         /* ── Fallback: gradient + floating icons + badge ────────────── */

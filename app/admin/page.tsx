@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Puzzle } from "@/types/puzzle";
 import { ADMIN_SECRET_HEADER } from "@/lib/admin-auth";
@@ -251,12 +252,14 @@ export default function AdminPage() {
                   key={puzzle.id}
                   className="flex items-center gap-3 bg-white/5 rounded-xl p-3 border border-white/5"
                 >
-                  <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-white/5">
+                  <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-white/5">
                     {puzzle.thumbnail_url && (
-                      <img
+                      <Image
                         src={puzzle.thumbnail_url}
                         alt={puzzle.title}
-                        className="w-full h-full object-cover"
+                        fill
+                        sizes="48px"
+                        className="object-cover"
                       />
                     )}
                   </div>

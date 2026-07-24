@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Image from "next/image";
 
 // ── Fullscreen puzzle image preview ──────────────────────────────────────────
 // Opened by the "View" badge on a puzzle card — lets the user inspect the
@@ -48,10 +49,19 @@ export function ImagePreviewModal({ src, title, onClose }: ImagePreviewModalProp
         className="flex flex-col items-center gap-4 max-w-[90vw] max-h-[85vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        <img
+        {/* Puzzle source images are always square (1200×1200) — intrinsic
+            width/height + auto CSS lets this scale responsively within the
+            max-w/max-h constraints while next/image still knows the real
+            aspect ratio (see the Next.js docs pattern for "fill container,
+            unknown display size, known intrinsic size"). */}
+        <Image
           src={src}
           alt={title}
+          width={1200}
+          height={1200}
+          sizes="90vw"
           className="max-w-[90vw] max-h-[75vh] object-contain rounded-[12px]"
+          style={{ width: "auto", height: "auto" }}
         />
         <span className="font-boldonse text-[16px] text-white text-center">
           {title}

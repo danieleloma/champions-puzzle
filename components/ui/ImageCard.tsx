@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { playClick } from "@/lib/sounds";
 
@@ -82,10 +83,12 @@ function PuzzleCard({
         )}
       >
         {/* ── Puzzle thumbnail ─────────────────────────────────────── */}
-        <img
+        <Image
           src={src}
           alt={title}
-          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          fill
+          sizes="196px"
+          className="object-cover pointer-events-none"
         />
 
         {/* ── Bottom blur overlay ──────────────────────────────────── */}

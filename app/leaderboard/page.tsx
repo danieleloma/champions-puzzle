@@ -12,6 +12,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { MenuSwitcher } from "@/components/ui/MenuSwitcher";
 import { LeaderboardTable } from "@/components/leaderboard/LeaderboardTable";
 import { Icon3D } from "@/components/ui";
@@ -186,7 +187,7 @@ export default function LeaderboardPage() {
             className="absolute bottom-[-60px] right-[-70px] pointer-events-none select-none z-0"
             style={{ transform: "rotate(16.63deg)" }}
           >
-            <img src="/icons/3d/medal.png" alt="" width={220} height={220} />
+            <Image src="/icons/3d/medal.webp" alt="" width={220} height={220} />
           </div>
 
           {/* Header — centred, width CONTENT_W (matches content below) */}

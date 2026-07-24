@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Button } from "@/components/ui";
 import { Icon3D } from "@/components/ui";
 import { useDeviceIdentity } from "@/hooks/useDeviceIdentity";
@@ -61,7 +62,7 @@ export default function LandingPage() {
       >
         {/* Cloud bg — fixed, fills viewport regardless of scroll/frame size */}
         <div style={{ position: "fixed", inset: 0, filter: "blur(15px)", opacity: 0.6, pointerEvents: "none", zIndex: 0 }}>
-          <img src="/splash/bg-clouds.png" alt="" style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }} />
+          <Image src="/splash/bg-clouds.webp" alt="" fill priority sizes="100vw" style={{ objectFit: "cover" }} />
         </div>
 
         {/* Spacer sized to the scaled frame height — transform doesn't shrink
@@ -164,10 +165,13 @@ export default function LandingPage() {
           pointerEvents: "none",
         }}
       >
-        <img
-          src="/splash/bg-clouds.png"
+        <Image
+          src="/splash/bg-clouds.webp"
           alt=""
-          style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }}
+          fill
+          priority
+          sizes="100vw"
+          style={{ objectFit: "cover" }}
         />
       </div>
 
