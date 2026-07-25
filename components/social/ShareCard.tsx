@@ -1,78 +1,155 @@
 "use client";
 
-import { forwardRef } from "react";
-import type { Difficulty } from "@/types/puzzle";
-import { formatTime, getRankBadge } from "@/lib/score-calculator";
-import { DIFFICULTY_CONFIG } from "@/types/puzzle";
+// ── Figma node 191:1349 "Share-page-shot" — 660×980 px ───────────────────────
+//
+//  Offscreen-only template captured via html2canvas (see hooks/useShareCard.ts)
+//  and attached to native shares / downloads as a personalized result image.
+//  Never rendered visibly — VictoryScreen mounts it positioned off-canvas.
+//
+//  Same 7 floating 3D icons as VictoryScreen's mobile layout (identical
+//  containerSize/imgSize per icon, confirmed against Figma metadata), just
+//  repositioned for this wider 660px frame instead of the 440px mobile one.
+//
+//  Card — 510×752  bg=#0d0d0d  rounded-20  px=30 py=40  gap=30  items-center:
+//  ├── stopwatch icon 200px
+//  ├── "Puzzle Complete" (Boldonse 25px) + "#N Globally" (Geist Mono 18.75px) — centred
+//  ├── stat rows (gap=15): label Geist Mono 18.75px #a7a9ad / value Geist 20px white
+//  ├── divider (1px, 10% white)
+//  └── "CHAMPIONS PUZZLE" wordmark (Boldonse 26.667px, centred, 2 lines)
+// ─────────────────────────────────────────────────────────────────────────────
 
-interface ShareCardProps {
-  username: string;
-  puzzleTitle: string;
-  completionTimeMs: number;
-  difficulty: Difficulty;
-  score: number;
-  rank?: number | null;
+import { forwardRef } from "react";
+import Image from "next/image";
+import { Icon3D } from "@/components/ui";
+import type { Icon3DName } from "@/components/ui";
+
+const FRAME_W = 660;
+const FRAME_H = 980;
+
+interface FloatIconDef {
+  name:          Icon3DName;
+  left:          number;
+  top:           number;
+  containerSize: number;
+  imgSize:       number;
+  deg:           number;
 }
 
-export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
-  ({ username, puzzleTitle, completionTimeMs, difficulty, score, rank }, ref) => {
-    const config = DIFFICULTY_CONFIG[difficulty];
+const FLOAT_ICONS: FloatIconDef[] = [
+  { name: "flag",             left: -198,   top: 641.76, containerSize: 446.279, imgSize: 333.54,  deg: -26.1  },
+  { name: "stadium",          left:  376,   top: 530.30, containerSize: 251.076, imgSize: 239.089, deg:  -2.95 },
+  { name: "jersey",           left:  460.58,top: -63,    containerSize: 368.921, imgSize: 271.768, deg:  28.72 },
+  { name: "gloves",           left: -141,   top:  76.33, containerSize: 486.869, imgSize: 365.17,  deg: -25.52 },
+  { name: "whistle",          left:  341,   top: 330.62, containerSize: 193.647, imgSize: 150.522, deg: -20.46 },
+  { name: "medal",            left:   23,   top: 485.62, containerSize: 193.647, imgSize: 150.522, deg: -20.46 },
+  { name: "substitute-board", left:  395.68,top: 727,    containerSize: 399.692, imgSize: 288.846, deg:  33.09 },
+];
 
-    return (
-      <div
-        ref={ref}
-        className="rounded-2xl overflow-hidden border border-white/10"
-        style={{ background: "linear-gradient(135deg, #0D0D0D 0%, #1a0505 100%)" }}
-      >
-        <div className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-arsenal-red rounded-lg flex items-center justify-center text-sm">
-                🏆
-              </div>
-              <div>
-                <p className="text-white font-bold text-sm">{username}</p>
-                <p className="text-white/40 text-[11px]">Arsenal Puzzle</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-arsenal-gold font-black text-xl font-mono">
-                {formatTime(completionTimeMs)}
-              </p>
-              {rank && (
-                <p className="text-white/40 text-[11px]">
-                  {getRankBadge(rank)} Rank #{rank}
-                </p>
-              )}
-            </div>
-          </div>
+export interface ShareCardStat {
+  label: string;
+  value: string;
+  xp?:   boolean;
+}
 
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-white/60 text-[11px]">Puzzle</p>
-              <p className="text-white text-sm font-semibold">{puzzleTitle}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-white/60 text-[11px]">Difficulty</p>
-              <p className="text-sm font-bold" style={{ color: config.color }}>
-                {config.label}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-white/60 text-[11px]">Score</p>
-              <p className="text-white text-sm font-bold">{score.toLocaleString()}</p>
-            </div>
-          </div>
+export interface ShareCardProps {
+  rank:  number | null;
+  stats: ShareCardStat[];
+}
 
-          <div className="mt-3 pt-3 border-t border-white/10 text-center">
-            <p className="text-white/30 text-[10px] tracking-widest uppercase">
-              Can you beat me? ⚽ arsenal-puzzle.vercel.app
-            </p>
+export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function ShareCard(
+  { rank, stats },
+  ref
+) {
+  return (
+    <div
+      ref={ref}
+      style={{
+        width:    FRAME_W,
+        height:   FRAME_H,
+        position: "relative",
+        overflow: "hidden",
+        background: "#87CEEB",
+      }}
+    >
+      {/* Blurred cloud background — same asset as the live VictoryScreen */}
+      <div style={{ position: "absolute", inset: 0, filter: "blur(15px)", opacity: 0.6 }}>
+        <Image src="/splash/bg-clouds.webp" alt="" fill sizes={`${FRAME_W}px`} style={{ objectFit: "cover" }} />
+      </div>
+
+      {/* Floating icons */}
+      {FLOAT_ICONS.map((icon) => (
+        <div
+          key={icon.name}
+          style={{
+            position: "absolute",
+            left:     icon.left,
+            top:      icon.top,
+            width:    icon.containerSize,
+            height:   icon.containerSize,
+            display:  "flex",
+            alignItems:     "center",
+            justifyContent: "center",
+          }}
+        >
+          <div style={{ transform: `rotate(${icon.deg}deg)` }}>
+            <Icon3D name={icon.name} size={icon.imgSize} loading="eager" />
           </div>
         </div>
-      </div>
-    );
-  }
-);
+      ))}
 
-ShareCard.displayName = "ShareCard";
+      {/* Card */}
+      <div
+        style={{
+          position:        "absolute",
+          left:            75,
+          top:             114,
+          width:           510,
+          display:         "flex",
+          flexDirection:   "column",
+          alignItems:      "center",
+          gap:             30,
+          padding:         "40px 30px",
+          backgroundColor: "#0d0d0d",
+          borderRadius:    20,
+        }}
+      >
+        <Icon3D name="stopwatch" size={200} loading="eager" />
+
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
+          <p style={{ fontFamily: "var(--font-boldonse), sans-serif", fontSize: 25, lineHeight: "normal", color: "#fff", margin: 0, textAlign: "center" }}>
+            Puzzle Complete
+          </p>
+          {rank !== null && (
+            <p style={{ fontFamily: "var(--font-geist-mono), monospace", fontWeight: 500, fontSize: 18.75, lineHeight: "normal", letterSpacing: "-0.9375px", color: "#929498", margin: "6px 0 0", textAlign: "center" }}>
+              #{rank} Globally
+            </p>
+          )}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 15, width: "100%" }}>
+          {stats.map((s) => (
+            <div key={s.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontFamily: "var(--font-geist-mono), monospace", fontWeight: 500, fontSize: 18.75, letterSpacing: "-0.9375px", color: "#a7a9ad" }}>
+                {s.label}
+              </span>
+              <span style={{ fontFamily: "var(--font-geist-sans), sans-serif", fontWeight: 500, fontSize: 20, letterSpacing: "-0.6px", color: s.xp ? "#fcff3f" : "#fff", lineHeight: 1.4 }}>
+                {s.value}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ width: "100%", height: 1, background: "rgba(255,255,255,0.1)" }} />
+
+        <p style={{ fontFamily: "var(--font-boldonse), sans-serif", fontSize: 26.667, lineHeight: "40px", letterSpacing: "-1.3333px", color: "#fff", textAlign: "center", margin: 0 }}>
+          CHAMPIONS<br />PUZZLE
+        </p>
+      </div>
+
+      {/* Home indicator — decorative, matches Figma's mobile-shot framing */}
+      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 21, display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 8 }}>
+        <div style={{ width: 134, height: 5, borderRadius: 100, background: "#1d1e25" }} />
+      </div>
+    </div>
+  );
+});

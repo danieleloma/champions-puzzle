@@ -7,6 +7,8 @@ import { useUserStore } from "@/store/user-store";
 import { formatTime, calculateScore, calculateXP } from "@/lib/score-calculator";
 import { getOrCreateDeviceId } from "@/lib/device-identity";
 import { Icon3D } from "@/components/ui";
+import { ShareCard } from "@/components/social/ShareCard";
+import { useShareCard } from "@/hooks/useShareCard";
 
 // ── Figma nodes: 30:1246 desktop (1440×1024) · 21:1418 mobile (440×926) ──────
 //
@@ -109,6 +111,7 @@ function WhatsAppIcon() {
 
 export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
   const cardRef = useRef<HTMLDivElement>(null);
+  const { cardRef: shareCardRef, shareToNative, downloadCard } = useShareCard();
   const { puzzle, difficulty, elapsedMs, moveCount, hintsUsed, sessionToken } = useGameStore();
   const { addXP } = useUserStore();
 
@@ -195,13 +198,33 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
     { label: "XP Earned",  value: `+${xpEarned} XP`,                                              xp: true  },
   ];
 
+  // Copy Link: tries the native OS share sheet first, with the score
+  // snapshot attached as an image — the user then picks X/WhatsApp/Messages/
+  // etc. from there, image included. Falls back to a plain clipboard copy
+  // (today's behavior) wherever native file-attachment share isn't supported
+  // (most desktop browsers).
   async function handleCopy() {
+    const shared = await shareToNative(shareText, shareUrl);
+    if (shared) return;
     await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
-  function handleXShare()   { window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, "_blank"); }
-  function handleWhatsApp() { window.open(`https://wa.me/?text=${encodeURIComponent(`${shareText}\n${shareUrl}`)}`, "_blank"); }
+
+  // X/WhatsApp share links only carry text+URL — neither platform's web
+  // intent supports attaching a custom image. So the snapshot is generated
+  // and downloaded instead, letting the user manually attach it in the
+  // composer that opens. window.open() fires first and synchronously, before
+  // the await — most browsers (Safari especially) only honor a new-tab open
+  // as a trusted user gesture when it's not preceded by an async gap.
+  async function handleXShare() {
+    window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, "_blank");
+    await downloadCard();
+  }
+  async function handleWhatsApp() {
+    window.open(`https://wa.me/?text=${encodeURIComponent(`${shareText}\n${shareUrl}`)}`, "_blank");
+    await downloadCard();
+  }
 
   // ── Shared card JSX (used in both layouts) ──────────────────────────────────
 
@@ -308,6 +331,16 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
     </div>
   );
 
+  // ── Hidden share-snapshot template — Figma node 191:1349 "Share-page-shot" ─
+  // Never visible: positioned off-canvas so html2canvas (via useShareCard)
+  // can still lay it out and capture it as an image for native sharing/
+  // download, without the user ever seeing it flash on screen.
+  const hiddenShareCard = (
+    <div style={{ position: "fixed", top: 0, left: -9999, pointerEvents: "none" }} aria-hidden>
+      <ShareCard ref={shareCardRef} rank={rank} stats={stats} />
+    </div>
+  );
+
   // ── Mobile layout — Figma node 21:1418 (440 × 926) ────────────────────────
   // Scrollable overlay, not fixed/overflow-hidden + centred: on a short/wide
   // viewport a width-locked scale can render the frame taller than the
@@ -317,6 +350,7 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
   if (isMobile) {
     return (
       <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden flex justify-center" style={{ background: "#87CEEB" }}>
+        {hiddenShareCard}
 
         {/* Cloud bg — fixed, fills viewport regardless of scroll/frame size */}
         <div className="fixed inset-0 pointer-events-none" style={{ filter: "blur(15px)", opacity: 0.6, zIndex: 0 }}>
@@ -372,6 +406,7 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
   // ── Desktop layout — Figma 1440 × 1024 scaled frame ────────────────────────
   return (
     <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center" style={{ background: "#87CEEB" }}>
+      {hiddenShareCard}
 
       {/* Cloud background — stretches edge-to-edge */}
       <div className="absolute inset-0 pointer-events-none" style={{ filter: "blur(15px)", opacity: 0.6 }}>
