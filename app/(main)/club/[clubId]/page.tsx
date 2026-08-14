@@ -29,9 +29,17 @@ import { DifficultyCard, Icon3D, ImageCard, ImagePreviewModal } from "@/componen
 import { getChampion } from "@/lib/champions-data";
 import { DIFFICULTY_CONFIG, type Difficulty, type Puzzle } from "@/types/puzzle";
 import { useGameStore } from "@/store/game-store";
+import { prefetchPuzzles, getCachedPuzzles } from "@/lib/puzzle-cache";
+import { preloadImage } from "@/lib/preload-image";
 
 // Matches CONTENT_W in app/(main)/layout.tsx
 const CONTENT_W = 648;
+
+// Mobile has no hover state, so touchstart only buys a few dozen ms of lead
+// time before the tap lands — not enough to hide a cold image/route fetch.
+// Instead, eagerly warm the first few puzzles (in the order they're shown)
+// as soon as they're loaded, so the most likely taps are already primed.
+const MOBILE_EAGER_PRELOAD_COUNT = 3;
 
 const DIFFICULTIES = Object.keys(DIFFICULTY_CONFIG) as Difficulty[];
 
@@ -80,16 +88,27 @@ export default function ClubPage() {
 
   // Load puzzles for this club — puzzlesLoading defaults to true, and this
   // page remounts (fresh initial state) when navigating to a different club.
+  // Reuses the shared cache: if the champions-page card was hovered/touched
+  // before this navigation, the fetch is already in flight (or done), so
+  // this often resolves on the next tick instead of a cold round trip.
   useEffect(() => {
     if (!clubId) return;
-    fetch(`/api/puzzles?clubId=${encodeURIComponent(clubId)}`)
-      .then((r) => r.json())
-      .then((data: { puzzles: Puzzle[] }) => {
-        setPuzzles(data.puzzles ?? []);
-      })
-      .catch(() => setPuzzles([]))
+    (getCachedPuzzles(clubId) ?? prefetchPuzzles(clubId))
+      .then((puzzles) => setPuzzles(puzzles))
       .finally(() => setPuzzlesLoading(false));
   }, [clubId]);
+
+  // Mobile: eagerly warm the top few puzzles' board image + /play route the
+  // moment the list loads, rather than waiting for a hover/touch that mobile
+  // barely gives any lead time on. Desktop still relies on onHoverIntent
+  // below — no need to burn bandwidth eagerly there.
+  useEffect(() => {
+    if (!isMobile || puzzles.length === 0) return;
+    for (const puzzle of puzzles.slice(0, MOBILE_EAGER_PRELOAD_COUNT)) {
+      preloadImage(puzzle.image_url);
+      router.prefetch(`/play/${puzzle.id}`);
+    }
+  }, [isMobile, puzzles, router]);
 
   function handleDifficultyClick(d: Difficulty) {
     setSelectedDifficulty((prev) => (prev === d ? null : d));
@@ -101,6 +120,13 @@ export default function ClubPage() {
     if (!selectedDifficulty) return;
     setPuzzle(puzzle, selectedDifficulty);
     router.push(`/play/${puzzle.id}`);
+  }
+
+  // Warms the /play route chunk + full-resolution board image on hover/touch,
+  // well before the click — the click itself then does no cold network work.
+  function handlePuzzleHoverIntent(puzzle: Puzzle) {
+    preloadImage(puzzle.image_url);
+    router.prefetch(`/play/${puzzle.id}`);
   }
 
   // Every puzzle image is playable at every difficulty — the grid size comes
@@ -328,6 +354,7 @@ export default function ClubPage() {
                     disabled={!selectedDifficulty}
                     onClick={() => handlePuzzlePlay(puzzle)}
                     onView={() => setPreviewPuzzle(puzzle)}
+                    onHoverIntent={() => handlePuzzleHoverIntent(puzzle)}
                     className="aspect-square w-full"
                   />
                 ))}
@@ -574,6 +601,7 @@ export default function ClubPage() {
                     disabled={!selectedDifficulty}
                     onClick={() => handlePuzzlePlay(puzzle)}
                     onView={() => setPreviewPuzzle(puzzle)}
+                    onHoverIntent={() => handlePuzzleHoverIntent(puzzle)}
                     className="w-full aspect-square"
                   />
                 ))}

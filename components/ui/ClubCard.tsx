@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Icon3D } from "@/components/ui/Icon3D";
 import type { Icon3DName } from "@/components/ui/Icon3D";
@@ -47,7 +48,11 @@ export interface ClubCardProps {
   badgeIcon?:    Icon3DName;
   badgeLetter?:  string;
   floatIcons?:   ClubFloatIcon[];
+  /** Destination — rendered as a next/link so the route is prefetched ahead of the click. */
+  href?:         string;
   onPlay?:       () => void;
+  /** Fired on hover/touchstart, before the click — hook for warming data/image caches. */
+  onHoverIntent?: () => void;
   className?:    string;
 }
 
@@ -61,23 +66,24 @@ export function ClubCard({
   badgeIcon,
   badgeLetter,
   floatIcons = [],
+  href,
   onPlay,
+  onHoverIntent,
   className,
 }: ClubCardProps) {
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={() => { playClick(); onPlay?.(); }}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); playClick(); onPlay?.(); }
-      }}
-      className={cn(
-        "relative w-[196px] h-[260px] rounded-[24px] overflow-hidden shrink-0",
-        "cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.99]",
-        className,
-      )}
-    >
+  const cardClassName = cn(
+    "relative block w-[196px] h-[260px] rounded-[24px] overflow-hidden shrink-0",
+    "cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.99]",
+    className,
+  );
+  const sharedProps = {
+    onClick: () => { playClick(); onPlay?.(); },
+    onMouseEnter: onHoverIntent,
+    onTouchStart: onHoverIntent,
+  };
+
+  const content = (
+    <>
       {imageSrc ? (
         /* ── Figma mode: full-bleed pre-composited image ───────────── */
         <Image
@@ -146,6 +152,28 @@ export function ClubCard({
           </p>
         </div>
       </div>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} prefetch className={cardClassName} {...sharedProps}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); playClick(); onPlay?.(); }
+      }}
+      className={cardClassName}
+      {...sharedProps}
+    >
+      {content}
     </div>
   );
 }

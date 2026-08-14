@@ -48,6 +48,8 @@ export interface PuzzleCardProps {
   onClick?: () => void;
   /** Shows the hover "View" badge (top-right) — opens a fullscreen preview */
   onView?: () => void;
+  /** Fired on hover/touchstart, before the click — hook for warming route/image caches. */
+  onHoverIntent?: () => void;
   /** Gates play — true until a difficulty is chosen. View still works. */
   disabled?: boolean;
   className?: string;
@@ -60,11 +62,14 @@ function PuzzleCard({
   tapLabel = "Tap to play",
   onClick,
   onView,
+  onHoverIntent,
   disabled = false,
   className,
 }: PuzzleCardProps) {
   return (
     <div
+      onMouseEnter={onHoverIntent}
+      onTouchStart={onHoverIntent}
       className={cn(
         // Container — 196×196px square, rounded-12px, border #252627
         "group relative size-[196px] rounded-[12px] overflow-hidden",

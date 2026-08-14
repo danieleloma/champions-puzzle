@@ -17,9 +17,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { BadgeContainer, ClubCard } from "@/components/ui";
 import { CHAMPIONS } from "@/lib/champions-data";
+import { prefetchPuzzles } from "@/lib/puzzle-cache";
 
 // Matches CONTENT_W in app/(main)/layout.tsx
 const CONTENT_W = 648;
@@ -40,8 +40,6 @@ const LEAGUES = [
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ChampionsPage() {
-  const router = useRouter();
-
   const [isMobile,     setIsMobile]     = useState(false);
   const [activeLeague, setActiveLeague] = useState<string | undefined>(undefined);
 
@@ -98,7 +96,8 @@ export default function ChampionsPage() {
               badgeIcon={c.badgeIcon}
               badgeLetter={c.badgeLetter}
               floatIcons={c.floatIcons}
-              onPlay={() => router.push(`/club/${c.id}`)}
+              href={`/club/${c.id}`}
+              onHoverIntent={() => prefetchPuzzles(c.id)}
               className="w-full"
             />
           ))}
@@ -145,7 +144,8 @@ export default function ChampionsPage() {
             badgeIcon={c.badgeIcon}
             badgeLetter={c.badgeLetter}
             floatIcons={c.floatIcons}
-            onPlay={() => router.push(`/club/${c.id}`)}
+            href={`/club/${c.id}`}
+            onHoverIntent={() => prefetchPuzzles(c.id)}
           />
         ))}
       </div>
