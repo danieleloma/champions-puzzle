@@ -60,6 +60,23 @@ interface FloatIconProps {
 }
 
 function FloatIcon({ left, top, containerSize, imgSize, deg, name }: FloatIconProps) {
+  // Gentle infinite bob — a separate wrapper div from the rotated one below,
+  // since GSAP owns the whole `transform` property on whatever it animates
+  // and would otherwise fight the static `rotate(deg)` for the same node.
+  // Duration/delay are derived from each icon's own position/angle so the
+  // seven icons drift out of phase instead of bobbing in robotic unison.
+  const floatRef = useRef<HTMLDivElement>(null);
+  useGSAP(() => {
+    gsap.to(floatRef.current, {
+      y:        -(10 + (Math.abs(deg) % 6)),
+      duration: 2.4 + (Math.abs(left + top) % 10) / 10,
+      delay:    (Math.abs(left) % 10) / 10,
+      ease:     "sine.inOut",
+      yoyo:     true,
+      repeat:   -1,
+    });
+  }, { scope: floatRef });
+
   return (
     <div
       style={{
@@ -74,8 +91,10 @@ function FloatIcon({ left, top, containerSize, imgSize, deg, name }: FloatIconPr
         pointerEvents:  "none",
       }}
     >
-      <div style={{ flexShrink: 0, transform: `rotate(${deg}deg)` }}>
-        <Icon3D name={name} size={imgSize} loading="eager" />
+      <div ref={floatRef}>
+        <div style={{ flexShrink: 0, transform: `rotate(${deg}deg)` }}>
+          <Icon3D name={name} size={imgSize} loading="eager" />
+        </div>
       </div>
     </div>
   );
@@ -114,8 +133,8 @@ function WhatsAppIcon() {
 export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const { cardRef: shareCardRef, shareToNative, downloadCard } = useShareCard();
-  const { puzzle, difficulty, elapsedMs, moveCount, hintsUsed, sessionToken } = useGameStore();
-  const { addXP } = useUserStore();
+  const { puzzle, difficulty, elapsedMs, moveCount, hintsUsed, sessionToken, challenge } = useGameStore();
+  const { user, addXP } = useUserStore();
 
   const [rank,        setRank]        = useState<number | null>(null);
   const submittedRef = useRef(false);
@@ -145,7 +164,8 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
     if (!el) return;
     gsap.timeline({ defaults: { ease: "expo.out" } })
       .fromTo(el,                              { scale: 0.92, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5 })
-      .fromTo(el.querySelectorAll(".v-stat"),  { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, stagger: 0.055 }, "-=0.2")
+      .fromTo(el.querySelector(".v-result"),   { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3 }, "-=0.25")
+      .fromTo(el.querySelectorAll(".v-stat"),  { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, stagger: 0.055 }, "-=0.15")
       .fromTo(el.querySelector(".v-share"),    { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3 }, "-=0.1")
       .fromTo(el.querySelector(".v-cta"),      { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3 }, "-=0.1");
   }, { scope: cardRef });
@@ -183,7 +203,12 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
   if (!puzzle) return null;
 
   const shareText = `I just solved the "${puzzle.title}" Arsenal puzzle in ${formatTime(elapsedMs)} on ${difficulty} difficulty! Can you beat me? ⚽`;
-  const shareUrl  = `${typeof window !== "undefined" ? window.location.origin : ""}/play/${puzzle.id}?challenge=${elapsedMs}`;
+  const shareParams = new URLSearchParams({ challenge: String(elapsedMs), difficulty });
+  if (user?.username) shareParams.set("from", user.username);
+  const shareUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/play/${puzzle.id}?${shareParams.toString()}`;
+
+  // Result vs. the friend's time this puzzle was opened to beat, if any.
+  const beatChallenge = challenge ? elapsedMs <= challenge.targetMs : null;
 
   const score    = calculateScore({ difficulty, completionTimeMs: elapsedMs, moveCount, hintsUsed });
   const xpEarned = calculateXP({ difficulty, completionTimeMs: elapsedMs, hintsUsed, score });
@@ -237,6 +262,30 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
         opacity: 0,
       }}
     >
+      {/* Challenge result — only when this puzzle was opened via a "beat my time" link */}
+      {challenge && (
+        <div
+          className="v-result"
+          style={{
+            backgroundColor: "#0d0d0d",
+            borderRadius:    16,
+            padding:         "12px 16px",
+            border:          `1px solid ${beatChallenge ? "#22c55e" : "#cc261a"}`,
+            fontFamily:      "var(--font-geist-sans), sans-serif",
+            fontWeight:      500,
+            fontSize:        14,
+            lineHeight:      "20px",
+            color:           "#fff",
+            textAlign:       "center",
+            opacity:         0,
+          }}
+        >
+          {beatChallenge
+            ? `🏆 You beat ${challenge.fromUsername}'s time by ${formatTime(challenge.targetMs - elapsedMs)}!`
+            : `${challenge.fromUsername}'s time still stands — you were ${formatTime(elapsedMs - challenge.targetMs)} slower.`}
+        </div>
+      )}
+
       {/* Stats card */}
       <div
         style={{

@@ -24,7 +24,7 @@ import { useTimer } from "@/hooks/useTimer";
 import { PuzzleBoard } from "@/components/puzzle/PuzzleBoard";
 import { VictoryScreen } from "@/components/game/VictoryScreen";
 import { Icon3D } from "@/components/ui";
-import { DIFFICULTY_CONFIG, type Puzzle } from "@/types/puzzle";
+import { DIFFICULTY_CONFIG, type Difficulty, type Puzzle } from "@/types/puzzle";
 import { formatTime } from "@/lib/score-calculator";
 import { getCompletionPercent } from "@/lib/puzzle-engine";
 
@@ -123,7 +123,17 @@ export default function PlayPageClient() {
   const router        = useRouter();
   const { puzzleId }  = useParams<{ puzzleId: string }>();
   const searchParams  = useSearchParams();
-  const challengeMs   = searchParams.get("challenge");
+
+  // "Beat my time" challenge link — see VictoryScreen's shareUrl for the writer side.
+  const challengeMsParam         = searchParams.get("challenge");
+  const challengeDifficultyParam = searchParams.get("difficulty");
+  const challengeFrom            = searchParams.get("from");
+  const parsedChallengeMs        = challengeMsParam ? Number(challengeMsParam) : NaN;
+  const isValidChallenge         = Number.isFinite(parsedChallengeMs) && parsedChallengeMs > 0 && !!challengeFrom;
+  const challengeDifficulty: Difficulty | null =
+    challengeDifficultyParam && challengeDifficultyParam in DIFFICULTY_CONFIG
+      ? (challengeDifficultyParam as Difficulty)
+      : null;
 
   const {
     puzzle,
@@ -136,11 +146,13 @@ export default function PlayPageClient() {
     isPaused,
     previewMode,
     hintsUsed,
+    challenge,
     resetGame,
     resumeGame,
     togglePreview,
     useHint,
     setPuzzle,
+    setChallenge,
   } = useGameStore();
 
   const { isOnboarded, isLoading } = useDeviceIdentity();
@@ -168,13 +180,15 @@ export default function PlayPageClient() {
     if (!isLoading && !isOnboarded) router.replace("/onboarding");
   }, [isLoading, isOnboarded, router]);
 
-  // When game store is empty (direct URL / preview iframe), fetch puzzle from API
+  // When game store is empty, or holds a *different* puzzle (e.g. a fresh
+  // challenge link opened right after finishing another puzzle), fetch the
+  // right one from the API. Direct URL / preview iframe hits this too.
   const fetchStarted = useRef(false);
   const [isFetching, setIsFetching] = useState(false);
   const [notFound,   setNotFound]   = useState(false);
 
   useEffect(() => {
-    if (puzzle || fetchStarted.current || !puzzleId) return;
+    if ((puzzle && puzzle.id === puzzleId) || fetchStarted.current || !puzzleId) return;
     fetchStarted.current = true;
     setIsFetching(true);
     fetch("/api/puzzles")
@@ -182,14 +196,47 @@ export default function PlayPageClient() {
       .then((data: { puzzles: Puzzle[] }) => {
         const found = (data.puzzles ?? []).find((p) => p.id === puzzleId);
         if (found) {
-          setPuzzle(found, found.difficulty);
+          // A challenge link pins the difficulty the challenger played at —
+          // otherwise the puzzle's own stored default would apply, which
+          // can silently put the two players on different grid sizes.
+          setPuzzle(found, challengeDifficulty ?? found.difficulty);
         } else {
           setNotFound(true);
         }
       })
       .catch(() => setNotFound(true))
       .finally(() => setIsFetching(false));
-  }, [puzzle, puzzleId, setPuzzle]);
+  }, [puzzle, puzzleId, setPuzzle, challengeDifficulty]);
+
+  // Layer the challenge onto the store once the right puzzle is loaded —
+  // setPuzzle always resets challenge to null, so this runs after it,
+  // regardless of whether the puzzle came from the club page or the
+  // fallback fetch above. Guarded to fire once per navigation.
+  const challengeApplied = useRef(false);
+  useEffect(() => {
+    if (challengeApplied.current) return;
+    if (!puzzle || puzzle.id !== puzzleId) return;
+    challengeApplied.current = true;
+    if (isValidChallenge) {
+      setChallenge({ fromUsername: challengeFrom!, targetMs: parsedChallengeMs });
+    }
+  }, [puzzle, puzzleId, isValidChallenge, challengeFrom, parsedChallengeMs, setChallenge]);
+
+  // Give the board's completion celebration a beat to play before the
+  // victory screen covers it — see PuzzleBoard's isCompleted stagger.
+  // Reset happens via handleReset below (a user action), not as a reaction
+  // to isCompleted flipping, so this effect only ever schedules the reveal.
+  const [showVictory, setShowVictory] = useState(false);
+  useEffect(() => {
+    if (!isCompleted) return;
+    const t = setTimeout(() => setShowVictory(true), 450);
+    return () => clearTimeout(t);
+  }, [isCompleted]);
+
+  function handleReset() {
+    setShowVictory(false);
+    resetGame();
+  }
 
   const cfg         = DIFFICULTY_CONFIG[difficulty];
   const placedCount = useMemo(() => tiles.filter((t) => t.isPlaced).length, [tiles]);
@@ -278,6 +325,11 @@ export default function PlayPageClient() {
                 <span style={{ fontFamily: "var(--font-geist-mono), monospace", fontWeight: 500, fontSize: 48, letterSpacing: "-2.4px", color: isStarted && !isCompleted ? "#fff" : "#929498", textAlign: "right", minWidth: 109, height: 56, display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
                   {formatTime(elapsedMs)}
                 </span>
+                {challenge && (
+                  <span style={{ fontFamily: "var(--font-geist-mono), monospace", fontWeight: 500, fontSize: 13, letterSpacing: "-0.65px", color: elapsedMs > challenge.targetMs ? "#cc261a" : "#73767b", whiteSpace: "nowrap" }}>
+                    Beat {challenge.fromUsername}: {formatTime(challenge.targetMs)}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -309,7 +361,7 @@ export default function PlayPageClient() {
 
           {/* ── RESTART — bg #252627 / Boldonse 16px #929498 ────────────── */}
           <button
-            onClick={resetGame}
+            onClick={handleReset}
             style={{ width: "100%", backgroundColor: "#252627", borderRadius: 1000, padding: "24px 20px", fontFamily: "var(--font-boldonse), sans-serif", fontSize: 16, lineHeight: "22px", letterSpacing: "-0.43px", color: "#929498", border: "none", cursor: "pointer", textAlign: "center" }}
           >
             RESTART
@@ -341,8 +393,8 @@ export default function PlayPageClient() {
         )}
 
         {/* Victory */}
-        {isCompleted && (
-          <VictoryScreen onReplay={resetGame} onHome={() => router.push("/champions")} />
+        {showVictory && (
+          <VictoryScreen onReplay={handleReset} onHome={() => router.push("/champions")} />
         )}
       </div>
     );
@@ -508,6 +560,20 @@ export default function PlayPageClient() {
               >
                 {formatTime(elapsedMs)}
               </span>
+              {challenge && (
+                <span
+                  style={{
+                    fontFamily:    "var(--font-geist-mono), monospace",
+                    fontWeight:    500,
+                    fontSize:      13,
+                    letterSpacing: "-0.65px",
+                    color:         elapsedMs > challenge.targetMs ? "#cc261a" : "#73767b",
+                    whiteSpace:    "nowrap",
+                  }}
+                >
+                  Beat {challenge.fromUsername}: {formatTime(challenge.targetMs)}
+                </span>
+              )}
             </div>
           </div>
 
@@ -583,7 +649,7 @@ export default function PlayPageClient() {
 
             {/* RESTART button — Figma 29:3682 — bg #252627  rounded-1000  Boldonse 16px  #929498 */}
             <button
-              onClick={resetGame}
+              onClick={handleReset}
               style={{
                 width:           CONTENT_W,
                 backgroundColor: "#252627",
@@ -733,9 +799,9 @@ export default function PlayPageClient() {
           VictoryScreen's own fixed inset-0 overlay would then fill the
           1440×1024 frame box instead of the real viewport, leaving the
           page's #0f0f10 background exposed as bars on wider screens. ── */}
-      {isCompleted && (
+      {showVictory && (
         <VictoryScreen
-          onReplay={resetGame}
+          onReplay={handleReset}
           onHome={() => router.push("/champions")}
         />
       )}

@@ -13,6 +13,8 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import { useGSAP } from "@gsap/react";
+import { gsap } from "gsap";
 import { useGameStore } from "@/store/game-store";
 import { DIFFICULTY_CONFIG } from "@/types/puzzle";
 import { getCompletionPercent, isAdjacent } from "@/lib/puzzle-engine";
@@ -37,15 +39,30 @@ interface GameTileProps {
   isHighlighted: boolean;
   previewMode:   boolean;
   activeIndex:   number | null; // currentIndex of the tile being dragged, if any
+  /** Lets the board reach this tile's DOM node directly (shake on invalid drop, victory stagger). */
+  registerEl:    (id: string, el: HTMLDivElement | null) => void;
 }
 
-function GameTile({ tile, imageUrl, grid, containerSize, isHighlighted, previewMode, activeIndex }: GameTileProps) {
+function GameTile({ tile, imageUrl, grid, containerSize, isHighlighted, previewMode, activeIndex, registerEl }: GameTileProps) {
   const tileVisual = (containerSize - (grid - 1) * TILE_GAP) / grid;
   const col = tile.currentIndex % grid;
   const row = Math.floor(tile.currentIndex / grid);
 
   const { attributes, listeners, setNodeRef: setDragRef, isDragging } =
     useDraggable({ id: tile.id, disabled: tile.isLocked || previewMode });
+
+  // Snap-on-place — a quick scale pop the moment a move (or hint) lands this
+  // tile on its correct cell. Fires once per false->true transition, not on
+  // initial mount (tiles never start pre-placed) or when a tile is later
+  // displaced (isPlaced flips back to false — no animation for that).
+  const elRef = useRef<HTMLDivElement | null>(null);
+  const wasPlaced = useRef(tile.isPlaced);
+  useGSAP(() => {
+    if (tile.isPlaced && !wasPlaced.current && elRef.current) {
+      gsap.fromTo(elRef.current, { scale: 1 }, { scale: 1.12, duration: 0.12, ease: "power2.out", yoyo: true, repeat: 1 });
+    }
+    wasPlaced.current = tile.isPlaced;
+  }, { dependencies: [tile.isPlaced], scope: elRef });
 
   // While a tile is being dragged, only its four cardinal neighbors are
   // valid drop targets — a tile can move only one step at a time.
@@ -75,7 +92,7 @@ function GameTile({ tile, imageUrl, grid, containerSize, isHighlighted, previewM
 
   return (
     <div
-      ref={(node) => { setDragRef(node); setDropRef(node); }}
+      ref={(node) => { setDragRef(node); setDropRef(node); elRef.current = node; registerEl(tile.id, node); }}
       {...attributes}
       {...listeners}
       style={{
@@ -115,13 +132,44 @@ interface PuzzleBoardProps {
 }
 
 export function PuzzleBoard({ imageUrl, size, showProgress = true }: PuzzleBoardProps) {
-  const { tiles, difficulty, moveTile, lastHintedTileId, previewMode } =
+  const { tiles, difficulty, moveTile, lastHintedTileId, previewMode, isCompleted } =
     useGameStore();
 
   const boardRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState(size ?? 320);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const { grid } = DIFFICULTY_CONFIG[difficulty];
+
+  // Direct DOM access to individual tiles, for animations that don't belong
+  // in React state (shake on invalid drop, victory stagger) — see GameTile's
+  // registerEl prop.
+  const tileEls = useRef<Map<string, HTMLDivElement>>(new Map());
+  const registerTileEl = useCallback((id: string, el: HTMLDivElement | null) => {
+    if (el) tileEls.current.set(id, el);
+    else tileEls.current.delete(id);
+  }, []);
+
+  const shakeTile = useCallback((tileId: string) => {
+    const el = tileEls.current.get(tileId);
+    if (!el) return;
+    gsap.timeline()
+      .to(el, { x: -6, duration: 0.05 })
+      .to(el, { x: 6, duration: 0.08 })
+      .to(el, { x: -4, duration: 0.06 })
+      .to(el, { x: 0, duration: 0.05 });
+  }, []);
+
+  // Victory — a ripple pop across every tile the instant the board completes,
+  // giving the win a beat of board-level feedback before VictoryScreen
+  // covers it (PlayPageClient delays that mount by ~450ms for this reason).
+  useGSAP(() => {
+    if (!isCompleted) return;
+    const els = Array.from(tileEls.current.values());
+    if (els.length === 0) return;
+    gsap.timeline()
+      .to(els, { scale: 1.06, duration: 0.15, stagger: 0.02, ease: "power2.out" })
+      .to(els, { scale: 1, duration: 0.25, stagger: 0.02, ease: "back.out(2)" }, "<0.05");
+  }, { dependencies: [isCompleted] });
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
@@ -157,15 +205,24 @@ export function PuzzleBoard({ imageUrl, size, showProgress = true }: PuzzleBoard
       setActiveIndex(null);
 
       const { active, over } = event;
-      if (!over) return;
+      const fromTile = tiles.find((t) => t.id === active.id.toString());
+
+      if (!over) {
+        // Released off any droppable (e.g. over a blocked, non-adjacent
+        // cell, which is disabled as a drop target) — invalid, shake it.
+        if (fromTile) shakeTile(fromTile.id);
+        return;
+      }
       const toIndex = parseInt(over.id.toString().replace("drop-", ""));
       if (isNaN(toIndex)) return;
 
-      const fromTile = tiles.find((t) => t.id === active.id.toString());
       if (!fromTile || toIndex === fromTile.currentIndex) return;
       // A tile can only move one step at a time — into a directly
       // adjacent cell (up/down/left/right), never a distant one.
-      if (!isAdjacent(fromTile.currentIndex, toIndex, grid)) return;
+      if (!isAdjacent(fromTile.currentIndex, toIndex, grid)) {
+        shakeTile(fromTile.id);
+        return;
+      }
 
       const willSnap    = toIndex === fromTile.correctIndex;
       const wasComplete = tiles.every((t) => t.isPlaced);
@@ -186,7 +243,7 @@ export function PuzzleBoard({ imageUrl, size, showProgress = true }: PuzzleBoard
         }
       }
     },
-    [moveTile, tiles, grid],
+    [moveTile, tiles, grid, shakeTile],
   );
 
   const completionPct = useMemo(() => getCompletionPercent(tiles), [tiles]);
@@ -235,6 +292,7 @@ export function PuzzleBoard({ imageUrl, size, showProgress = true }: PuzzleBoard
                   isHighlighted={tile.id === lastHintedTileId}
                   previewMode={previewMode}
                   activeIndex={activeIndex}
+                  registerEl={registerTileEl}
                 />
               ))
             )}

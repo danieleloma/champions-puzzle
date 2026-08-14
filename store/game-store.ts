@@ -42,8 +42,11 @@ interface GameState {
   previewMode: boolean;
   lastHintedTileId: string | null;
   sessionToken: string | null;
+  /** Set when this puzzle was opened via a "beat my time" share link. */
+  challenge: { fromUsername: string; targetMs: number } | null;
 
   setPuzzle: (puzzle: Puzzle, difficulty: Difficulty) => void;
+  setChallenge: (challenge: { fromUsername: string; targetMs: number } | null) => void;
   startGame: () => void;
   moveTile: (fromId: string, toIndex: number) => void;
   useHint: () => void;
@@ -71,12 +74,15 @@ export const useGameStore = create<GameState>((set, get) => ({
   previewMode: false,
   lastHintedTileId: null,
   sessionToken: null,
+  challenge: null,
 
   setPuzzle: (puzzle, difficulty) => {
     const tiles = createTiles(difficulty);
-    set({ puzzle, difficulty, tiles, isStarted: false, isCompleted: false, isPaused: false, elapsedMs: 0, moveCount: 0, hintsUsed: 0, sessionToken: null });
+    set({ puzzle, difficulty, tiles, isStarted: false, isCompleted: false, isPaused: false, elapsedMs: 0, moveCount: 0, hintsUsed: 0, sessionToken: null, challenge: null });
     requestSessionToken(puzzle.id, difficulty, set);
   },
+
+  setChallenge: (challenge) => set({ challenge }),
 
   startGame: () => {
     if (!get().isStarted) {

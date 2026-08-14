@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useGSAP } from "@gsap/react";
+import { gsap } from "gsap";
 import { Button } from "@/components/ui";
 import { Icon3D } from "@/components/ui";
 import { useDeviceIdentity } from "@/hooks/useDeviceIdentity";
@@ -293,6 +295,23 @@ interface FloatIconProps {
 }
 
 function FloatIcon({ left, top, containerSize, deg, children }: FloatIconProps) {
+  // Gentle infinite bob — a separate wrapper div from the rotated one below,
+  // since GSAP owns the whole `transform` property on whatever it animates
+  // and would otherwise fight React's static `rotate(deg)` for the same node.
+  // Duration/delay are derived from each icon's own position/angle so the
+  // seven icons drift out of phase instead of bobbing in robotic unison.
+  const floatRef = useRef<HTMLDivElement>(null);
+  useGSAP(() => {
+    gsap.to(floatRef.current, {
+      y:        -(10 + (Math.abs(deg) % 6)),
+      duration: 2.4 + (Math.abs(left + top) % 10) / 10,
+      delay:    (Math.abs(left) % 10) / 10,
+      ease:     "sine.inOut",
+      yoyo:     true,
+      repeat:   -1,
+    });
+  }, { scope: floatRef });
+
   return (
     <div
       style={{
@@ -307,8 +326,10 @@ function FloatIcon({ left, top, containerSize, deg, children }: FloatIconProps) 
         pointerEvents:   "none",
       }}
     >
-      <div style={{ flexShrink: 0, transform: `rotate(${deg}deg)` }}>
-        {children}
+      <div ref={floatRef}>
+        <div style={{ flexShrink: 0, transform: `rotate(${deg}deg)` }}>
+          {children}
+        </div>
       </div>
     </div>
   );
