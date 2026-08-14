@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import type Anime from "animejs";
+import { useRef } from "react";
+import { useGSAP } from "@gsap/react";
+import { gsap } from "gsap";
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -10,40 +11,12 @@ interface SplashScreenProps {
 export function SplashScreen({ onComplete }: SplashScreenProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    async function animate() {
-      // animejs v3 exports the function as `module.exports` (CJS).
-      // Webpack's ESM interop puts it on `.default`; if that's absent fall back to the module itself.
-      const mod = (await import("animejs")) as unknown as { default?: typeof Anime };
-      const anime = mod.default?.timeline ? mod.default : (mod as unknown as typeof Anime);
-      const el = containerRef.current;
-      if (!el) return;
-
-      anime
-        .timeline({ easing: "easeOutExpo" })
-        .add({
-          targets: el.querySelector(".logo"),
-          scale: [0.5, 1],
-          opacity: [0, 1],
-          duration: 600,
-        })
-        .add({
-          targets: el.querySelector(".tagline"),
-          translateY: [20, 0],
-          opacity: [0, 1],
-          duration: 500,
-        })
-        .add({
-          targets: el,
-          opacity: [1, 0],
-          duration: 400,
-          delay: 800,
-          complete: onComplete,
-        });
-    }
-
-    animate();
-  }, [onComplete]);
+  useGSAP(() => {
+    gsap.timeline({ defaults: { ease: "expo.out" } })
+      .fromTo(".logo", { scale: 0.5, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.6 })
+      .fromTo(".tagline", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5 })
+      .to(containerRef.current, { opacity: 0, duration: 0.4, delay: 0.8, onComplete });
+  }, { scope: containerRef, dependencies: [onComplete] });
 
   return (
     <div

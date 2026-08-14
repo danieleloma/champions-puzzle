@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
     ],
   },
   experimental: {
-    optimizePackageImports: ["lucide-react", "animejs"],
+    optimizePackageImports: ["lucide-react", "gsap"],
   },
   // /public assets have unhashed filenames, so Vercel serves them with
   // `max-age=0, must-revalidate` by default — every page view re-checks

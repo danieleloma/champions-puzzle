@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { useGSAP } from "@gsap/react";
+import { gsap } from "gsap";
 import { useGameStore } from "@/store/game-store";
 import { useUserStore } from "@/store/user-store";
 import { formatTime, calculateScore, calculateXP } from "@/lib/score-calculator";
@@ -138,19 +140,15 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
     return () => window.removeEventListener("resize", compute);
   }, []);
 
-  useEffect(() => {
-    async function animate() {
-      const anime = (await import("animejs")).default;
-      const el = cardRef.current;
-      if (!el) return;
-      anime.timeline({ easing: "easeOutExpo" })
-        .add({ targets: el,                              scale: [0.92, 1], opacity: [0, 1], duration: 500 })
-        .add({ targets: el.querySelectorAll(".v-stat"),  translateY: [10, 0], opacity: [0, 1], duration: 350, delay: anime.stagger(55) }, "-=200")
-        .add({ targets: el.querySelector(".v-share"),    translateY: [10, 0], opacity: [0, 1], duration: 300 }, "-=100")
-        .add({ targets: el.querySelector(".v-cta"),      translateY: [10, 0], opacity: [0, 1], duration: 300 }, "-=100");
-    }
-    animate();
-  }, []);
+  useGSAP(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    gsap.timeline({ defaults: { ease: "expo.out" } })
+      .fromTo(el,                              { scale: 0.92, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5 })
+      .fromTo(el.querySelectorAll(".v-stat"),  { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, stagger: 0.055 }, "-=0.2")
+      .fromTo(el.querySelector(".v-share"),    { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3 }, "-=0.1")
+      .fromTo(el.querySelector(".v-cta"),      { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3 }, "-=0.1");
+  }, { scope: cardRef });
 
   useEffect(() => {
     if (submittedRef.current || !sessionToken) return;
