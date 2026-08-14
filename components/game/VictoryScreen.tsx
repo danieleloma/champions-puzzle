@@ -160,6 +160,15 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
     return () => window.removeEventListener("resize", compute);
   }, []);
 
+  // isMobile starts false (no `window` during SSR) and flips to its real
+  // value a moment after mount, which swaps this component's whole JSX
+  // branch (desktop <-> mobile) — React unmounts the first branch's card
+  // element and mounts a fresh one. Without `isMobile` as a dependency this
+  // effect only fires once, animating whichever card happened to exist on
+  // that very first commit — usually the desktop one, which then gets
+  // destroyed a moment later, leaving the real (mobile) card permanently
+  // stuck at its initial opacity:0. Depending on isMobile makes it re-fire
+  // against whatever card element is actually current after that swap.
   useGSAP(() => {
     const el = cardRef.current;
     if (!el) return;
@@ -169,7 +178,7 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
       .fromTo(el.querySelectorAll(".v-stat"),  { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, stagger: 0.055 }, "-=0.15")
       .fromTo(el.querySelector(".v-share"),    { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3 }, "-=0.1")
       .fromTo(el.querySelector(".v-cta"),      { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3 }, "-=0.1");
-  }, { scope: cardRef });
+  }, { scope: cardRef, dependencies: [isMobile] });
 
   useEffect(() => {
     if (submittedRef.current || !sessionToken) return;
