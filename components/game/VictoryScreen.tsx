@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { useGSAP } from "@gsap/react";
 import { gsap } from "gsap";
@@ -394,8 +395,14 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
   // viewport, and this card sits at 50%/50% within it — cropping instead of
   // scrolling would risk clipping the card itself. Same fix as app/landing
   // & app/onboarding.
+  //
+  // Both branches below are portaled straight into document.body (see
+  // ImagePreviewModal's comment for the transform/containing-block half of
+  // this) — VictoryScreen is mounted from inside PlayPageClient's own DOM
+  // subtree, and rendering `position: fixed` in place there is exactly the
+  // class of bug that made the card effectively unreachable on mobile.
   if (isMobile) {
-    return (
+    return createPortal(
       <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden flex justify-center" style={{ background: "#87CEEB" }}>
         {hiddenShareCard}
 
@@ -446,12 +453,13 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
           </div>
         </div>
         </div>
-      </div>
+      </div>,
+      document.body,
     );
   }
 
   // ── Desktop layout — Figma 1440 × 1024 scaled frame ────────────────────────
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center" style={{ background: "#87CEEB" }}>
       {hiddenShareCard}
 
@@ -493,6 +501,7 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
           {cardContent}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
