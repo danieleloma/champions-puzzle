@@ -34,8 +34,8 @@ import { useShareCard } from "@/hooks/useShareCard";
 //  │     "#N Globally"      Geist Mono 15px  #929498  tracking −0.75px
 //  │     stat rows (gap=12): label Geist Mono 15px #a7a9ad / value Geist 16px white
 //  │     XP Earned value in #fcff3f
-//  ├── Share row  gap=8  3× (bg=#0d0d0d rounded-16 px=24 py=16 flex-col gap=12)
-//  │     icon 20px + label Geist 16px white
+//  ├── Share row — single full-width button (bg=#0d0d0d rounded-16 px=24 py=16)
+//  │     link icon 20px + "Challenge a Friend" label Geist 16px white
 //  └── CTA row  gap=8  2× pill buttons (black / #cc261a)  Boldonse 16px  py=24
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -112,28 +112,11 @@ function LinkIcon() {
   );
 }
 
-function XIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
-      <path d="M11.59 8.49 17.24 2h-1.35L10.98 7.6 6.81 2H2l5.93 8.4L2 18h1.35l5.18-5.9L13.19 18H18L11.59 8.49Zm-1.83 2.09-.6-.85L3.38 3h2.06l3.86 5.42.6.84 5.02 7.07h-2.06L9.76 10.58Z" fill="white"/>
-    </svg>
-  );
-}
-
-function WhatsAppIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
-      <path fillRule="evenodd" clipRule="evenodd" d="M10 2a8 8 0 0 0-6.93 11.97L2 18l4.15-1.05A8 8 0 1 0 10 2Zm0 14.5a6.5 6.5 0 1 1 0-13 6.5 6.5 0 0 1 0 13Z" fill="white"/>
-      <path d="M13.35 11.49c-.2-.1-1.17-.58-1.35-.64-.18-.07-.31-.1-.44.1s-.51.64-.63.77-.23.14-.43.05c-.2-.1-.85-.31-1.61-1.01-.6-.54-1-1.21-1.12-1.41s-.01-.3.09-.41c.09-.09.2-.23.3-.35.1-.12.13-.2.2-.33.07-.14.04-.25-.02-.35-.05-.1-.44-1.07-.6-1.46-.16-.38-.32-.33-.44-.34a7.9 7.9 0 0 0-.38-.007c-.13 0-.34.05-.52.25-.18.2-.68.66-.68 1.62s.7 1.88.8 2.01c.1.13 1.37 2.1 3.33 2.94.46.2.83.32 1.11.41.47.15.89.13 1.23.08.37-.06 1.15-.47 1.32-.93.16-.46.16-.85.11-.93-.05-.08-.18-.13-.38-.23Z" fill="white"/>
-    </svg>
-  );
-}
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
   const cardRef = useRef<HTMLDivElement>(null);
-  const { cardRef: shareCardRef, shareToNative, downloadCard } = useShareCard();
+  const { cardRef: shareCardRef, shareToNative } = useShareCard();
   const { puzzle, difficulty, elapsedMs, moveCount, hintsUsed, sessionToken, challenge } = useGameStore();
   const { user, addXP } = useUserStore();
 
@@ -181,6 +164,16 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
       .fromTo(el.querySelector(".v-share"),    { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3 }, "-=0.1")
       .fromTo(el.querySelector(".v-cta"),      { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3 }, "-=0.1");
   }, { scope: cardRef, dependencies: [isMobile] });
+
+  // Lock body scroll while this overlay is up — without this, a scroll
+  // gesture on top of the fixed overlay can still scroll the page
+  // underneath, which on mobile browsers changes window.innerHeight as the
+  // address bar collapses/expands, visibly jumping the frame's scale.
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prevOverflow; };
+  }, []);
 
   useEffect(() => {
     if (submittedRef.current || !sessionToken) return;
@@ -233,32 +226,18 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
     { label: "XP Earned",  value: `+${xpEarned} XP`,                                              xp: true  },
   ];
 
-  // Copy Link: tries the native OS share sheet first, with the score
-  // snapshot attached as an image — the user then picks X/WhatsApp/Messages/
-  // etc. from there, image included. Falls back to a plain clipboard copy
-  // (today's behavior) wherever native file-attachment share isn't supported
-  // (most desktop browsers).
+  // Challenge a Friend: tries the native OS share sheet first, with the
+  // score snapshot attached as an image — the user then picks X/WhatsApp/
+  // Messages/etc. from there, image included. Falls back to a plain
+  // clipboard copy wherever native file-attachment share isn't supported
+  // (most desktop browsers). Either way the link carries this run's time as
+  // a challenge target — see the ghost-race indicator in PlayPageClient.
   async function handleCopy() {
     const shared = await shareToNative(shareText, shareUrl);
     if (shared) return;
     await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  }
-
-  // X/WhatsApp share links only carry text+URL — neither platform's web
-  // intent supports attaching a custom image. So the snapshot is generated
-  // and downloaded instead, letting the user manually attach it in the
-  // composer that opens. window.open() fires first and synchronously, before
-  // the await — most browsers (Safari especially) only honor a new-tab open
-  // as a trusted user gesture when it's not preceded by an async gap.
-  async function handleXShare() {
-    window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, "_blank");
-    await downloadCard();
-  }
-  async function handleWhatsApp() {
-    window.open(`https://wa.me/?text=${encodeURIComponent(`${shareText}\n${shareUrl}`)}`, "_blank");
-    await downloadCard();
   }
 
   // ── Shared card JSX (used in both layouts) ──────────────────────────────────
@@ -341,35 +320,28 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
         </div>
       </div>
 
-      {/* Share buttons */}
-      <div className="v-share" style={{ display: "flex", gap: 8, opacity: 0 }}>
-        {[
-          { label: copied ? "Copied!" : "Copy Link", icon: <LinkIcon />,     onClick: handleCopy    },
-          { label: "X",                               icon: <XIcon />,        onClick: handleXShare  },
-          { label: "WhatsApp",                        icon: <WhatsAppIcon />, onClick: handleWhatsApp },
-        ].map((btn) => (
-          <button
-            key={btn.label}
-            onClick={btn.onClick}
-            style={{
-              flex:            "1 0 0",
-              backgroundColor: "#0d0d0d",
-              borderRadius:    16,
-              padding:         "16px 24px",
-              display:         "flex",
-              flexDirection:   "column",
-              alignItems:      "center",
-              gap:             12,
-              border:          "none",
-              cursor:          "pointer",
-            }}
-          >
-            {btn.icon}
-            <span style={{ fontFamily: "var(--font-geist-sans), sans-serif", fontWeight: 500, fontSize: 16, letterSpacing: "-0.48px", color: "#fff", lineHeight: 1.4, whiteSpace: "nowrap" }}>
-              {btn.label}
-            </span>
-          </button>
-        ))}
+      {/* Share — one button, framed as a challenge rather than a plain share */}
+      <div className="v-share" style={{ display: "flex", opacity: 0 }}>
+        <button
+          onClick={handleCopy}
+          style={{
+            flex:            "1 0 0",
+            backgroundColor: "#0d0d0d",
+            borderRadius:    16,
+            padding:         "16px 24px",
+            display:         "flex",
+            flexDirection:   "column",
+            alignItems:      "center",
+            gap:             12,
+            border:          "none",
+            cursor:          "pointer",
+          }}
+        >
+          <LinkIcon />
+          <span style={{ fontFamily: "var(--font-geist-sans), sans-serif", fontWeight: 500, fontSize: 16, letterSpacing: "-0.48px", color: "#fff", lineHeight: 1.4, whiteSpace: "nowrap" }}>
+            {copied ? "Copied!" : "Challenge a Friend"}
+          </span>
+        </button>
       </div>
 
       {/* CTA buttons */}
@@ -452,11 +424,6 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
             }}
           >
             {cardContent}
-          </div>
-
-          {/* Home indicator — #1d1e25 per Figma */}
-          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 21, display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 8, zIndex: 5 }}>
-            <div style={{ width: 134, height: 5, borderRadius: 100, background: "#1d1e25" }} />
           </div>
         </div>
       </div>,
