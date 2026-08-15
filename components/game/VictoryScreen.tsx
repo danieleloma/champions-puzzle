@@ -150,10 +150,12 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
       const h = window.innerHeight;
       setIsMobile(w < 768);
       setScale(Math.min(w / FRAME_W, h / FRAME_H));
-      // Width-locked, not min(w,h) — same fix as app/landing & app/onboarding:
-      // "contain" scaling leaves dead space down both sides on short/wide
-      // viewports. Fills the screen edge-to-edge and scrolls (below) instead.
-      setMobileScale(w / MOBILE_W);
+      // Contain (min of both ratios), not width-locked: the whole overlay is
+      // fixed to the viewport with no scrolling, so the frame must always
+      // fit within the shorter dimension too, or content would get clipped
+      // instead of scrolled into view. Centred below, so any resulting
+      // side/top-bottom space reads as letterboxing, not a layout bug.
+      setMobileScale(Math.min(w / MOBILE_W, h / MOBILE_H));
     };
     compute();
     window.addEventListener("resize", compute);
@@ -399,11 +401,11 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
   );
 
   // ── Mobile layout — Figma node 21:1418 (440 × 926) ────────────────────────
-  // Scrollable overlay, not fixed/overflow-hidden + centred: on a short/wide
-  // viewport a width-locked scale can render the frame taller than the
-  // viewport, and this card sits at 50%/50% within it — cropping instead of
-  // scrolling would risk clipping the card itself. Same fix as app/landing
-  // & app/onboarding.
+  // Fixed to the viewport, no scrolling: the frame is scaled to *contain*
+  // within the viewport (mobileScale = min of both ratios, see above) so it
+  // never exceeds the visible height, and it's centred as a whole rather
+  // than anchored top-left — the card sits at 50%/50% of the frame, which
+  // now coincides with the true viewport centre.
   //
   // Both branches below are portaled straight into document.body (see
   // ImagePreviewModal's comment for the transform/containing-block half of
@@ -412,26 +414,22 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
   // class of bug that made the card effectively unreachable on mobile.
   if (isMobile) {
     return createPortal(
-      <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden flex justify-center" style={{ background: "#87CEEB" }}>
+      <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center" style={{ background: "#87CEEB" }}>
         {hiddenShareCard}
 
-        {/* Cloud bg — fixed, fills viewport regardless of scroll/frame size */}
+        {/* Cloud bg — fixed, fills viewport regardless of frame size */}
         <div className="fixed inset-0 pointer-events-none" style={{ filter: "blur(15px)", opacity: 0.6, zIndex: 0 }}>
           <Image src="/splash/bg-clouds.webp" alt="" fill sizes="100vw" style={{ objectFit: "cover" }} />
         </div>
 
-        {/* Spacer sized to the scaled frame height — transform doesn't shrink
-            layout footprint, so this keeps the scroll region correct. */}
-        <div style={{ width: MOBILE_W * mobileScale, height: MOBILE_H * mobileScale, position: "relative", zIndex: 1 }}>
         <div
           style={{
-            width:           MOBILE_W,
-            height:          MOBILE_H,
-            position:        "absolute",
-            top:             0,
-            left:            0,
-            transform:       `scale(${mobileScale})`,
-            transformOrigin: "top left",
+            width:     MOBILE_W,
+            height:    MOBILE_H,
+            position:  "absolute",
+            left:      "50%",
+            top:       "50%",
+            transform: `translate(-50%, -50%) scale(${mobileScale})`,
           }}
         >
           {/* 7 floating icons — same positions as splash screen */}
@@ -443,7 +441,7 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
           <FloatIcon name="medal"            left={-5}   top={433} containerSize={193.647} imgSize={150.522} deg={-20.46} />
           <FloatIcon name="substitute-board" left={100}  top={727} containerSize={399.692} imgSize={288.846} deg={33.09}  />
 
-          {/* Card — centred at 50% / 50% */}
+          {/* Card — centred at 50% / 50% of the frame == centre of viewport */}
           <div
             style={{
               position:  "absolute",
@@ -460,7 +458,6 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 21, display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 8, zIndex: 5 }}>
             <div style={{ width: 134, height: 5, borderRadius: 100, background: "#1d1e25" }} />
           </div>
-        </div>
         </div>
       </div>,
       document.body,
