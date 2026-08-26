@@ -16,6 +16,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Badge, SoundToggle } from "@/components/ui";
 import { useDeviceIdentity } from "@/hooks/useDeviceIdentity";
 
@@ -41,6 +42,14 @@ function NavWordmark() {
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const { user } = useDeviceIdentity();
+  const pathname = usePathname();
+
+  // /club/[clubId] is a drill-down from /champions and already has its own
+  // back button — repeating the hub's logo/XP/Ranks row on top of that is
+  // redundant chrome and, on short viewports, pushes real content down
+  // further than a detail screen warrants. Hub-level nav stays for
+  // /champions itself and everywhere else under this layout.
+  const hideTopNav = pathname?.startsWith("/club/") ?? false;
 
   const [scale,       setScale]       = useState(1);
   const [isMobile,    setIsMobile]    = useState(false);
@@ -84,15 +93,21 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     return (
       <div className="min-h-screen bg-[#0f0f10] overflow-y-auto">
         {/* flexWrap is a safety net: long usernames (up to the 20-char max)
-            push the badge group below the logo instead of clipping Ranks. */}
+            push the badge group below the logo instead of clipping Ranks.
+            Padding-top is kept even when hideTopNav is true, so the page's
+            own back button still gets consistent top spacing. */}
         <div style={{ padding: "84px 16px 0", display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8, rowGap: 12 }}>
-          <div style={{ pointerEvents: "none", flexShrink: 0 }}>
-            <p style={{ fontFamily: "var(--font-boldonse), sans-serif", fontSize: 14.667, lineHeight: "22px", letterSpacing: "-0.7333px", color: "#fff", margin: 0 }}>CHAMPIONS</p>
-            <p style={{ fontFamily: "var(--font-boldonse), sans-serif", fontSize: 14.667, lineHeight: "22px", letterSpacing: "-0.7333px", color: "#fff", margin: 0 }}>PUZZLE</p>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-            {navBadges}
-          </div>
+          {!hideTopNav && (
+            <>
+              <div style={{ pointerEvents: "none", flexShrink: 0 }}>
+                <p style={{ fontFamily: "var(--font-boldonse), sans-serif", fontSize: 14.667, lineHeight: "22px", letterSpacing: "-0.7333px", color: "#fff", margin: 0 }}>CHAMPIONS</p>
+                <p style={{ fontFamily: "var(--font-boldonse), sans-serif", fontSize: 14.667, lineHeight: "22px", letterSpacing: "-0.7333px", color: "#fff", margin: 0 }}>PUZZLE</p>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                {navBadges}
+              </div>
+            </>
+          )}
         </div>
         {children}
       </div>
@@ -119,12 +134,16 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           }}
         >
           {/* ── Nav bar — centred, width CONTENT_W ── */}
-          <div style={{ position: "absolute", left: "50%", top: 57, transform: "translateX(-50%)", width: CONTENT_W, display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-            <NavWordmark />
-            <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-              {navBadges}
+          {/* Absolutely positioned, so hiding it doesn't shift `children` —
+              those position themselves independently within the frame. */}
+          {!hideTopNav && (
+            <div style={{ position: "absolute", left: "50%", top: 57, transform: "translateX(-50%)", width: CONTENT_W, display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+              <NavWordmark />
+              <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+                {navBadges}
+              </div>
             </div>
-          </div>
+          )}
 
           {children}
         </div>
