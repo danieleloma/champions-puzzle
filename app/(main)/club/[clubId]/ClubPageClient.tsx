@@ -353,7 +353,6 @@ export default function ClubPageClient() {
                     variant="puzzle"
                     src={puzzle.thumbnail_url || puzzle.image_url}
                     title={puzzle.title}
-                    gridSize={selectedDifficulty ? DIFFICULTY_CONFIG[selectedDifficulty].grid : DIFFICULTY_CONFIG[puzzle.difficulty].grid}
                     disabled={!selectedDifficulty}
                     onClick={() => handlePuzzlePlay(puzzle)}
                     onView={() => setPreviewPuzzle(puzzle)}
@@ -602,7 +601,6 @@ export default function ClubPageClient() {
                     variant="puzzle"
                     src={puzzle.thumbnail_url || puzzle.image_url}
                     title={puzzle.title}
-                    gridSize={selectedDifficulty ? DIFFICULTY_CONFIG[selectedDifficulty].grid : DIFFICULTY_CONFIG[puzzle.difficulty].grid}
                     disabled={!selectedDifficulty}
                     onClick={() => handlePuzzlePlay(puzzle)}
                     onView={() => setPreviewPuzzle(puzzle)}

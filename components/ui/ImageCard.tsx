@@ -41,8 +41,6 @@ export interface PuzzleCardProps {
   src: string;
   /** Puzzle display title  e.g. "Arteta Celebration" */
   title: string;
-  /** Grid dimension N — renders "N×N · Tap to play"  e.g. 3 → "3×3" */
-  gridSize: number;
   /** Override the secondary line  default "Tap to play" */
   tapLabel?: string;
   onClick?: () => void;
@@ -58,7 +56,6 @@ export interface PuzzleCardProps {
 function PuzzleCard({
   src,
   title,
-  gridSize,
   tapLabel = "Tap to play",
   onClick,
   onView,
@@ -121,16 +118,12 @@ function PuzzleCard({
               Select difficulty
             </span>
           ) : (
-            /* Grid spec row — Geist Mono Medium 15px / grid+label #d4d4d6, dot #73767b */
-            <div className="flex items-baseline font-mono font-medium">
-              <span className="text-[15px] leading-none tracking-[-0.75px] text-[#d4d4d6]">
-                {gridSize}×{gridSize}
-              </span>
-              <span className="text-[12px] leading-none tracking-[-0.6px] mx-px text-[#73767b]">·</span>
-              <span className="text-[15px] leading-none tracking-[-0.75px] text-[#d4d4d6]">
-                {tapLabel}
-              </span>
-            </div>
+            /* Tap label only — the grid size (N×N) was redundant here since
+               difficulty (and thus grid size) is chosen before puzzles are
+               even shown; the user already knows what they picked. */
+            <span className="font-mono font-medium text-[15px] leading-none tracking-[-0.75px] text-[#d4d4d6]">
+              {tapLabel}
+            </span>
           )}
         </div>
       </button>
