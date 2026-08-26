@@ -10,8 +10,6 @@ import { useUserStore } from "@/store/user-store";
 import { formatTime, calculateScore, calculateXP } from "@/lib/score-calculator";
 import { getOrCreateDeviceId } from "@/lib/device-identity";
 import { Icon3D } from "@/components/ui";
-import { ShareCard } from "@/components/social/ShareCard";
-import { useShareCard } from "@/hooks/useShareCard";
 
 // ── Figma nodes: 30:1246 desktop (1440×1024) · 21:1418 mobile (440×926) ──────
 //
@@ -116,7 +114,6 @@ function LinkIcon() {
 
 export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
   const cardRef = useRef<HTMLDivElement>(null);
-  const { cardRef: shareCardRef, shareToNative } = useShareCard();
   const { puzzle, difficulty, elapsedMs, moveCount, hintsUsed, sessionToken, challenge } = useGameStore();
   const { user, addXP } = useUserStore();
 
@@ -207,7 +204,6 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
 
   if (!puzzle) return null;
 
-  const shareText = `I just solved the "${puzzle.title}" Arsenal puzzle in ${formatTime(elapsedMs)} on ${difficulty} difficulty! Can you beat me? ⚽`;
   const shareParams = new URLSearchParams({ challenge: String(elapsedMs), difficulty });
   if (user?.username) shareParams.set("from", user.username);
   const shareUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/play/${puzzle.id}?${shareParams.toString()}`;
@@ -226,16 +222,29 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
     { label: "XP Earned",  value: `+${xpEarned} XP`,                                              xp: true  },
   ];
 
-  // Challenge a Friend: tries the native OS share sheet first, with the
-  // score snapshot attached as an image — the user then picks X/WhatsApp/
-  // Messages/etc. from there, image included. Falls back to a plain
-  // clipboard copy wherever native file-attachment share isn't supported
-  // (most desktop browsers). Either way the link carries this run's time as
-  // a challenge target — see the ghost-race indicator in PlayPageClient.
+  // Challenge a Friend: shares the bare URL only — no caption text, no
+  // attached image. Every chat app (WhatsApp, iMessage, etc.) unfurls a
+  // link-only message into a clean rich-preview card using our OG image
+  // (app/opengraph-image.tsx); adding a caption alongside the URL is what
+  // makes apps show it as plain clickable text instead, and attaching a
+  // captured image turns it into an image-with-caption message rather than
+  // a link preview — neither gives the clean card look this is going for.
+  // Falls back to a plain clipboard copy wherever navigator.share isn't
+  // supported (most desktop browsers). Either way the link carries this
+  // run's time as a challenge target — see the ghost-race indicator in
+  // PlayPageClient.
   async function handleCopy() {
-    const shared = await shareToNative(shareText, shareUrl);
-    if (shared) return;
-    await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+    if (navigator.share) {
+      try {
+        await navigator.share({ url: shareUrl });
+        return;
+      } catch (err) {
+        // AbortError = user dismissed the share sheet — respect that
+        // instead of silently copying to clipboard behind their back.
+        if (err instanceof Error && err.name === "AbortError") return;
+      }
+    }
+    await navigator.clipboard.writeText(shareUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -362,16 +371,6 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
     </div>
   );
 
-  // ── Hidden share-snapshot template — Figma node 191:1349 "Share-page-shot" ─
-  // Never visible: positioned off-canvas so html2canvas (via useShareCard)
-  // can still lay it out and capture it as an image for native sharing/
-  // download, without the user ever seeing it flash on screen.
-  const hiddenShareCard = (
-    <div style={{ position: "fixed", top: 0, left: -9999, pointerEvents: "none" }} aria-hidden>
-      <ShareCard ref={shareCardRef} rank={rank} stats={stats} />
-    </div>
-  );
-
   // ── Mobile layout — Figma node 21:1418 (440 × 926) ────────────────────────
   // Fixed to the viewport, no scrolling: the frame is scaled to *contain*
   // within the viewport (mobileScale = min of both ratios, see above) so it
@@ -387,8 +386,6 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
   if (isMobile) {
     return createPortal(
       <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center" style={{ background: "#87CEEB" }}>
-        {hiddenShareCard}
-
         {/* Cloud bg — fixed, fills viewport regardless of frame size */}
         <div className="fixed inset-0 pointer-events-none" style={{ filter: "blur(15px)", opacity: 0.6, zIndex: 0 }}>
           <Image src="/splash/bg-clouds.webp" alt="" fill sizes="100vw" style={{ objectFit: "cover" }} />
@@ -434,8 +431,6 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
   // ── Desktop layout — Figma 1440 × 1024 scaled frame ────────────────────────
   return createPortal(
     <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center" style={{ background: "#87CEEB" }}>
-      {hiddenShareCard}
-
       {/* Cloud background — stretches edge-to-edge */}
       <div className="absolute inset-0 pointer-events-none" style={{ filter: "blur(15px)", opacity: 0.6 }}>
         <Image src="/splash/bg-clouds.webp" alt="" fill sizes="100vw" style={{ objectFit: "cover" }} />
