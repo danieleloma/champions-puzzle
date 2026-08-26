@@ -155,10 +155,10 @@ export default function ClubPageClient() {
     return (
       <>
         {/* ── Back button — top offset matches the site-wide mobile standard
-            (84px, same as the layout's own nav row on every other page) now
+            (24px, same as the layout's own nav row on every other page) now
             that this page's own hub-nav row above it is empty/hidden. Size
             (32×32) matches the leaderboard page's back button. ──────────── */}
-        <div style={{ padding: "84px 16px 0" }}>
+        <div style={{ padding: "24px 16px 0" }}>
           <button
             onClick={() => router.push("/champions")}
             style={{
@@ -333,8 +333,8 @@ export default function ClubPageClient() {
               </p>
             )}
             {puzzlesLoading ? (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-                {[0, 1, 2].map((i) => (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {[0, 1, 2, 3].map((i) => (
                   <div
                     key={i}
                     style={{ aspectRatio: "1 / 1", borderRadius: 12, backgroundColor: "#161617", border: "1px solid #252627" }}
@@ -346,7 +346,7 @@ export default function ClubPageClient() {
                 No puzzles available.
               </p>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 {visiblePuzzles.map((puzzle) => (
                   <ImageCard
                     key={puzzle.id}
@@ -381,15 +381,17 @@ export default function ClubPageClient() {
   return (
     <>
       {/* ── Back button — left-aligned with the CONTENT_W column below ── */}
-      {/* zIndex needed: it sits at the same top:200 as, and inside the
-          horizontal span of, the Content wrapper below — which paints after
-          it and would otherwise steal its clicks despite being transparent */}
+      {/* top:57 matches the hub nav's position on /champions (this page's
+          own logo/XP/Ranks row is hidden here, so the back button takes
+          over that same row instead of sitting down at the content's own
+          top:200) — keeps the two pages' header rows aligned when
+          navigating between them. */}
       <button
         onClick={() => router.push("/champions")}
         style={{
           position:        "absolute",
           left:            `calc(50% - ${CONTENT_W / 2}px)`,
-          top:             200,
+          top:             57,
           zIndex:          1,
           border:          "1px solid #73767b",
           borderRadius:    4,

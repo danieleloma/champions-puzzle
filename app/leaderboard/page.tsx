@@ -4,7 +4,7 @@
 //
 //  Mobile frame: 440 × 926 (iPhone 13 Mini)
 //  Medal decoration: left:105 bottom:-192.3 container:597px img:480px rot:16.63°
-//  Content: centred (left:50% -translate-x-1/2) top:84 width:408 gap:24
+//  Content: centred (left:50% -translate-x-1/2) top:24 width:408 gap:24
 //    ├── Header row: back (32×32) + flex-1 title centre + w-52 placeholder
 //    ├── MenuSwitcher
 //    └── LeaderboardTable (gap:8 between cards)
@@ -101,7 +101,7 @@ export default function LeaderboardPage() {
           style={{
             position:      "relative",
             zIndex:        1,
-            padding:       "84px 16px 40px",
+            padding:       "24px 16px 40px",
             display:       "flex",
             flexDirection: "column",
             gap:           24,
