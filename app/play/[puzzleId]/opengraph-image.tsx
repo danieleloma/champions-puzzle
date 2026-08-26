@@ -9,10 +9,26 @@ import { getServiceClient } from "@/lib/supabase";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-// Doesn't inherit the page's own generateStaticParams, so this renders
-// dynamically per request by default — cache it so a crawler re-fetching
-// the same puzzle's image doesn't re-hit Supabase every time.
+// Cache a live-generated image (e.g. a puzzle added after the last build)
+// so a crawler re-fetching the same puzzle doesn't repeat the ~3s
+// Supabase-query + image-fetch + Satori-render cost on every hit.
 export const revalidate = 3600;
+
+// This file doesn't automatically inherit the page's own generateStaticParams
+// — without its own copy, EVERY request (including every crawler hit) pays
+// the full ~3s generation cost live, since there's nothing to statically
+// serve. That's almost certainly why link-preview bots (which time out much
+// faster than that) were never actually getting the image: `next build`
+// now pre-renders one of these per known puzzle, same as the page itself.
+export async function generateStaticParams() {
+  try {
+    const supabase = getServiceClient();
+    const { data } = await supabase.from("puzzles").select("id").eq("active", true);
+    return (data ?? []).map((p) => ({ puzzleId: p.id }));
+  } catch {
+    return [];
+  }
+}
 
 export default async function OpengraphImage({ params }: { params: Promise<{ puzzleId: string }> }) {
   const { puzzleId } = await params;
@@ -21,13 +37,16 @@ export default async function OpengraphImage({ params }: { params: Promise<{ puz
   let title = "Champions Puzzle";
   try {
     const supabase = getServiceClient();
+    // thumbnail_url over the full-resolution image_url: smaller source
+    // means a faster fetch + faster Satori decode/composite, and a smaller
+    // final PNG — all three directly cut into the crawler-timeout risk.
     const { data } = await supabase
       .from("puzzles")
-      .select("image_url, title")
+      .select("thumbnail_url, image_url, title")
       .eq("id", puzzleId)
       .single();
     if (data) {
-      imageUrl = data.image_url;
+      imageUrl = data.thumbnail_url || data.image_url;
       title = data.title;
     }
   } catch {
