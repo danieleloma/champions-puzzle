@@ -8,9 +8,8 @@ import { playClick } from "@/lib/sounds";
 //
 //  196×196px  rounded-12px  border #252627
 //  ├─ Puzzle thumbnail fills card (object-cover)
-//  ├─ Bottom: puzzle title (Boldonse 14px, white)
-//  │          + "Nx×N · Tap to play" (Geist Mono Med 15px)
-//  │            grid/tap-label #d4d4d6 (grey-200) · dot #73767b (grey-600)
+//  ├─ Bottom: puzzle title (Boldonse 14px, white) + "Select difficulty"
+//  │          (Geist Mono Med 15px, #d4d4d6) only while gated/disabled
 //  ├─ Bottom blur overlay (blur-20px gradient, mix-blend-multiply)
 //  └─ "View" badge — top-right 10px inset, hidden until hover/focus
 //                    (Figma "View Button" instance — reveals on :hover to
@@ -41,8 +40,6 @@ export interface PuzzleCardProps {
   src: string;
   /** Puzzle display title  e.g. "Arteta Celebration" */
   title: string;
-  /** Override the secondary line  default "Tap to play" */
-  tapLabel?: string;
   onClick?: () => void;
   /** Shows the hover "View" badge (top-right) — opens a fullscreen preview */
   onView?: () => void;
@@ -56,7 +53,6 @@ export interface PuzzleCardProps {
 function PuzzleCard({
   src,
   title,
-  tapLabel = "Tap to play",
   onClick,
   onView,
   onHoverIntent,
@@ -113,16 +109,12 @@ function PuzzleCard({
             {title}
           </span>
 
-          {disabled ? (
+          {/* "Tap to play" removed — a clickable card with a title needs no
+              instructional label. "Select difficulty" stays: it explains
+              *why* the card is greyed out, which isn't otherwise obvious. */}
+          {disabled && (
             <span className="font-mono font-medium text-[15px] leading-none tracking-[-0.75px] text-[#d4d4d6]">
               Select difficulty
-            </span>
-          ) : (
-            /* Tap label only — the grid size (N×N) was redundant here since
-               difficulty (and thus grid size) is chosen before puzzles are
-               even shown; the user already knows what they picked. */
-            <span className="font-mono font-medium text-[15px] leading-none tracking-[-0.75px] text-[#d4d4d6]">
-              {tapLabel}
             </span>
           )}
         </div>
