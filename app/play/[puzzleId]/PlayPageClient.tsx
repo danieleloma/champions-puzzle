@@ -3,7 +3,7 @@
 // ── Figma node 29:3387 "Game-board-default" — 1440 × 1024 px ─────────────────
 //
 //  Nav bar (left 200  top 57  width 1040  justify-between):
-//  • Left  — back button: bordered (1px #73767b, radius 4px, 52×32px) with ← arrow icon
+//  • Left  — back button: bordered (1px #73767b, radius 4px, 32×32px) with ← arrow icon
 //  • Right — eye-preview badge + hint badge (same border style, h-32px)
 //
 //  Content (cx=720  top=200  flex-col  gap=41  items-center):
@@ -270,7 +270,7 @@ export default function PlayPageClient() {
   //
   //  Content container: padding 84/16/40  flex-col gap:41
   //    └─ Section 1 (flex-col gap:56):
-  //         nav row  — back (52×32) + [eye (32×32), hint badge]
+  //         nav row  — back (32×32) + [eye (32×32), hint badge]
   //         info row — [title Boldonse16 + difficulty cfg.color] / [moves Geist24 + timer GeistMono48 h:56 w:109]
   //    └─ PuzzleBoard (no fixed size — auto-fits its full-width container)
   //    └─ Progress bar (labels 16px / track h:12 #252627 / fill #fcff3f)
@@ -286,7 +286,7 @@ export default function PlayPageClient() {
 
             {/* Nav — back left, [eye + hint] right */}
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-              <NavBadge width={52} onClick={() => router.back()}>
+              <NavBadge width={32} onClick={() => router.back()}>
                 <ArrowLeftIcon />
               </NavBadge>
               <div style={{ display: "flex", gap: 8 }}>
@@ -430,8 +430,8 @@ export default function PlayPageClient() {
             justifyContent: "space-between",
           }}
         >
-          {/* Back — 52×32px bordered button with ← */}
-          <NavBadge width={52} onClick={() => router.back()}>
+          {/* Back — 32×32px bordered button with ← */}
+          <NavBadge width={32} onClick={() => router.back()}>
             <ArrowLeftIcon />
           </NavBadge>
 

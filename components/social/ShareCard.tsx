@@ -71,9 +71,19 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function Sha
         background: "#87CEEB",
       }}
     >
-      {/* Blurred cloud background — same asset as the live VictoryScreen */}
+      {/* Blurred cloud background — same asset as the live VictoryScreen.
+          unoptimized: this card only ever gets rasterized by html2canvas
+          (see useShareCard), never actually painted on screen — routing
+          through Next's image optimizer adds a srcset/proxy layer that
+          html2canvas can catch mid-swap, rendering the image half-loaded
+          (this is what was cropping the stopwatch icon). A plain <img> with
+          the real static path avoids that entirely. */}
       <div style={{ position: "absolute", inset: 0, filter: "blur(15px)", opacity: 0.6 }}>
-        <Image src="/splash/bg-clouds.webp" alt="" fill sizes={`${FRAME_W}px`} style={{ objectFit: "cover" }} />
+        {/* priority: without it next/image defaults to loading="lazy", and
+            this element sits at left:-9999px — permanently outside any
+            viewport an IntersectionObserver would consider "near" — so it
+            would never actually start loading at all. */}
+        <Image src="/splash/bg-clouds.webp" alt="" fill sizes={`${FRAME_W}px`} style={{ objectFit: "cover" }} unoptimized priority />
       </div>
 
       {/* Floating icons */}
@@ -92,7 +102,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function Sha
           }}
         >
           <div style={{ transform: `rotate(${icon.deg}deg)` }}>
-            <Icon3D name={icon.name} size={icon.imgSize} loading="eager" />
+            <Icon3D name={icon.name} size={icon.imgSize} loading="eager" unoptimized />
           </div>
         </div>
       ))}
@@ -113,7 +123,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function Sha
           borderRadius:    20,
         }}
       >
-        <Icon3D name="stopwatch" size={200} loading="eager" />
+        <Icon3D name="stopwatch" size={200} loading="eager" unoptimized />
 
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
           <p style={{ fontFamily: "var(--font-boldonse), sans-serif", fontSize: 25, lineHeight: "normal", color: "#fff", margin: 0, textAlign: "center" }}>

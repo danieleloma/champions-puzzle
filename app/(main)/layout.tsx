@@ -94,9 +94,10 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       <div className="min-h-screen bg-[#0f0f10] overflow-y-auto">
         {/* flexWrap is a safety net: long usernames (up to the 20-char max)
             push the badge group below the logo instead of clipping Ranks.
-            Padding-top is kept even when hideTopNav is true, so the page's
-            own back button still gets consistent top spacing. */}
-        <div style={{ padding: "84px 16px 0", display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8, rowGap: 12 }}>
+            No padding reserved when hideTopNav is true — the page's own
+            back button owns the standard 84px top offset instead, so the
+            two don't stack into a doubled gap. */}
+        <div style={hideTopNav ? undefined : { padding: "84px 16px 0", display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8, rowGap: 12 }}>
           {!hideTopNav && (
             <>
               <div style={{ pointerEvents: "none", flexShrink: 0 }}>

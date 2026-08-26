@@ -154,15 +154,18 @@ export default function ClubPageClient() {
   if (isMobile) {
     return (
       <>
-        {/* ── Back button ───────────────────────────────────────────────── */}
-        <div style={{ padding: "16px 16px 0" }}>
+        {/* ── Back button — top offset matches the site-wide mobile standard
+            (84px, same as the layout's own nav row on every other page) now
+            that this page's own hub-nav row above it is empty/hidden. Size
+            (32×32) matches the leaderboard page's back button. ──────────── */}
+        <div style={{ padding: "84px 16px 0" }}>
           <button
             onClick={() => router.push("/champions")}
             style={{
               border:          "1px solid #73767b",
               borderRadius:    4,
               height:          32,
-              width:           52,
+              width:           32,
               display:         "flex",
               alignItems:      "center",
               justifyContent:  "center",
@@ -391,7 +394,7 @@ export default function ClubPageClient() {
           border:          "1px solid #73767b",
           borderRadius:    4,
           height:          32,
-          width:           52,
+          width:           32,
           display:         "flex",
           alignItems:      "center",
           justifyContent:  "center",
