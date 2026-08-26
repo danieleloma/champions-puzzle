@@ -203,6 +203,7 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
   }, [sessionToken, addXP]);
 
   if (!puzzle) return null;
+  const puzzleId = puzzle.id;
 
   const shareParams = new URLSearchParams({ challenge: String(elapsedMs), difficulty });
   if (user?.username) shareParams.set("from", user.username);
@@ -222,21 +223,53 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
     { label: "XP Earned",  value: `+${xpEarned} XP`,                                              xp: true  },
   ];
 
-  // Challenge a Friend: shares the bare URL only — no caption text, no
-  // attached image. Every chat app (WhatsApp, iMessage, etc.) unfurls a
-  // link-only message into a clean rich-preview card using our OG image
-  // (app/opengraph-image.tsx); adding a caption alongside the URL is what
-  // makes apps show it as plain clickable text instead, and attaching a
-  // captured image turns it into an image-with-caption message rather than
-  // a link preview — neither gives the clean card look this is going for.
-  // Falls back to a plain clipboard copy wherever navigator.share isn't
-  // supported (most desktop browsers). Either way the link carries this
-  // run's time as a challenge target — see the ghost-race indicator in
-  // PlayPageClient.
-  async function handleCopy() {
+  // Challenge a Friend: attaches a personalized stats snapshot (time,
+  // score, moves, XP) to the native share sheet alongside the link — same
+  // pattern as YouTube Music's "Share Lyrics" flow (a branded image file +
+  // a separate link, not a bare URL relying on a chat app's own link-
+  // preview crawler). The snapshot is rendered server-side by
+  // /api/share-card (sharp, same approach as the per-puzzle OG image) so
+  // this only has to fetch a small (~100-150KB) already-composited JPEG,
+  // not rasterize the DOM client-side — the previous html2canvas version
+  // of this had real reliability problems (slow capture risked expiring
+  // the click's user-activation window before navigator.share() ran).
+  // A short abort timeout on that fetch protects the same window here: if
+  // the card isn't ready fast enough, share the bare link instead of
+  // stalling the tap. Falls back to a plain clipboard copy wherever
+  // navigator.share isn't supported (most desktop browsers). Either way
+  // the link carries this run's time as a challenge target — see the
+  // ghost-race indicator in PlayPageClient.
+  async function handleShare() {
+    const cardParams = new URLSearchParams({
+      puzzleId:   puzzleId,
+      timeMs:     String(elapsedMs),
+      score:      String(score),
+      moves:      String(moveCount),
+      difficulty,
+      xp:         String(xpEarned),
+    });
+    if (rank !== null) cardParams.set("rank", String(rank));
+
+    let file: File | null = null;
+    if (typeof navigator.canShare === "function") {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 1500);
+        const res = await fetch(`/api/share-card?${cardParams.toString()}`, { signal: controller.signal });
+        clearTimeout(timeout);
+        if (res.ok) {
+          const blob = await res.blob();
+          const candidate = new File([blob], "champions-puzzle.jpg", { type: blob.type || "image/jpeg" });
+          if (navigator.canShare({ files: [candidate] })) file = candidate;
+        }
+      } catch {
+        // Card fetch failed or timed out — share the bare link below.
+      }
+    }
+
     if (navigator.share) {
       try {
-        await navigator.share({ url: shareUrl });
+        await navigator.share(file ? { files: [file], text: shareUrl } : { url: shareUrl });
         return;
       } catch (err) {
         // AbortError = user dismissed the share sheet — respect that
@@ -332,7 +365,7 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
       {/* Share — one button, framed as a challenge rather than a plain share */}
       <div className="v-share" style={{ display: "flex", opacity: 0 }}>
         <button
-          onClick={handleCopy}
+          onClick={handleShare}
           style={{
             flex:            "1 0 0",
             backgroundColor: "#0d0d0d",
