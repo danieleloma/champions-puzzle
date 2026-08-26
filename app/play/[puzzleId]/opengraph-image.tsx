@@ -1,4 +1,4 @@
-import { ImageResponse } from "next/og";
+import sharp from "sharp";
 import { getServiceClient } from "@/lib/supabase";
 
 // Per-puzzle link-preview image — overrides the site-wide default from
@@ -6,20 +6,26 @@ import { getServiceClient } from "@/lib/supabase";
 // puzzle's own photo (the "completed puzzle" the player just solved)
 // instead of the generic branding card, so a shared/challenge link is
 // recognizable at a glance in a chat preview.
+//
+// Built with `sharp` instead of next/og's ImageResponse (Satori) on purpose:
+// Satori only emits PNG, and a full-bleed 1200x630 photo losslessly encoded
+// as PNG comes out to 1.2-2MB. That's well within Facebook's documented 8MB
+// og:image cap and loads fine via curl/UA-spoofed fetch — which is exactly
+// why this was so hard to diagnose — but WhatsApp's link-preview crawler
+// silently drops images over roughly 300KB with no error surfaced anywhere.
+// Encoding as JPEG at quality 78 gets a photographic 1200x630 frame to
+// ~80-150KB, comfortably under that budget.
 
 export const size = { width: 1200, height: 630 };
-export const contentType = "image/png";
+export const contentType = "image/jpeg";
 // Cache a live-generated image (e.g. a puzzle added after the last build)
-// so a crawler re-fetching the same puzzle doesn't repeat the ~3s
-// Supabase-query + image-fetch + Satori-render cost on every hit.
+// so a crawler re-fetching the same puzzle doesn't repeat the source-fetch
+// + sharp-composite cost on every hit.
 export const revalidate = 3600;
 
 // This file doesn't automatically inherit the page's own generateStaticParams
 // — without its own copy, EVERY request (including every crawler hit) pays
-// the full ~3s generation cost live, since there's nothing to statically
-// serve. That's almost certainly why link-preview bots (which time out much
-// faster than that) were never actually getting the image: `next build`
-// now pre-renders one of these per known puzzle, same as the page itself.
+// the full generation cost live, since there's nothing to statically serve.
 export async function generateStaticParams() {
   try {
     const supabase = getServiceClient();
@@ -30,6 +36,39 @@ export async function generateStaticParams() {
   }
 }
 
+const { width: W, height: H } = size;
+
+// Bottom gradient + title, rendered as an SVG overlay and composited with
+// sharp — same visual result as the old Satori JSX, minus Satori.
+function overlaySvg(title: string) {
+  const escaped = title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return Buffer.from(`
+    <svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stop-color="#000000" stop-opacity="0.15" />
+          <stop offset="50%"  stop-color="#000000" stop-opacity="0.15" />
+          <stop offset="100%" stop-color="#000000" stop-opacity="0.85" />
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="${W}" height="${H}" fill="url(#g)" />
+      <text x="60" y="${H - 108}" font-family="sans-serif" font-size="28" font-weight="700" fill="#fcff3f" letter-spacing="-0.5">CHAMPIONS PUZZLE</text>
+      <text x="60" y="${H - 60}" font-family="sans-serif" font-size="56" font-weight="700" fill="#ffffff" letter-spacing="-1">${escaped}</text>
+    </svg>
+  `);
+}
+
+async function brandingOnlyCard(title: string): Promise<Buffer> {
+  const svg = Buffer.from(`
+    <svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+      <rect x="0" y="0" width="${W}" height="${H}" fill="#0f0f10" />
+      <text x="60" y="${H - 108}" font-family="sans-serif" font-size="28" font-weight="700" fill="#fcff3f" letter-spacing="-0.5">CHAMPIONS PUZZLE</text>
+      <text x="60" y="${H - 60}" font-family="sans-serif" font-size="56" font-weight="700" fill="#ffffff" letter-spacing="-1">${title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</text>
+    </svg>
+  `);
+  return sharp(svg).jpeg({ quality: 82 }).toBuffer();
+}
+
 export default async function OpengraphImage({ params }: { params: Promise<{ puzzleId: string }> }) {
   const { puzzleId } = await params;
 
@@ -37,9 +76,6 @@ export default async function OpengraphImage({ params }: { params: Promise<{ puz
   let title = "Champions Puzzle";
   try {
     const supabase = getServiceClient();
-    // thumbnail_url over the full-resolution image_url: smaller source
-    // means a faster fetch + faster Satori decode/composite, and a smaller
-    // final PNG — all three directly cut into the crawler-timeout risk.
     const { data } = await supabase
       .from("puzzles")
       .select("thumbnail_url, image_url, title")
@@ -58,44 +94,26 @@ export default async function OpengraphImage({ params }: { params: Promise<{ puz
     ? (imageUrl.startsWith("http") ? imageUrl : `${appUrl}${imageUrl}`)
     : null;
 
-  return new ImageResponse(
-    (
-      <div style={{ width: "100%", height: "100%", position: "relative", display: "flex", background: "#0f0f10" }}>
-        {absoluteImageUrl && (
-          <img
-            src={absoluteImageUrl}
-            alt=""
-            width={1200}
-            height={630}
-            // Satori (next/og's renderer) doesn't support the `inset`
-            // shorthand — it silently no-ops, leaving the element unsized
-            // instead of stretched to fill. Explicit edges are required.
-            style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0, objectFit: "cover", width: "100%", height: "100%" }}
-          />
-        )}
-        <div
-          style={{
-            position:      "absolute",
-            top:           0,
-            right:         0,
-            bottom:        0,
-            left:          0,
-            display:       "flex",
-            flexDirection: "column",
-            justifyContent: "flex-end",
-            padding:       60,
-            background:    "linear-gradient(0deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.35) 100%)",
-          }}
-        >
-          <div style={{ display: "flex", fontSize: 28, fontWeight: 700, color: "#fcff3f", letterSpacing: -0.5 }}>
-            CHAMPIONS PUZZLE
-          </div>
-          <div style={{ display: "flex", fontSize: 56, fontWeight: 700, color: "#ffffff", marginTop: 8, letterSpacing: -1 }}>
-            {title}
-          </div>
-        </div>
-      </div>
-    ),
-    { ...size },
-  );
+  let jpegBuffer: Buffer;
+  try {
+    if (!absoluteImageUrl) throw new Error("no source image");
+    const res = await fetch(absoluteImageUrl);
+    if (!res.ok) throw new Error(`source fetch failed: ${res.status}`);
+    const sourceBytes = Buffer.from(await res.arrayBuffer());
+
+    jpegBuffer = await sharp(sourceBytes)
+      .resize(W, H, { fit: "cover", position: "centre" })
+      .composite([{ input: overlaySvg(title) }])
+      .jpeg({ quality: 78 })
+      .toBuffer();
+  } catch {
+    jpegBuffer = await brandingOnlyCard(title);
+  }
+
+  return new Response(new Uint8Array(jpegBuffer), {
+    headers: {
+      "Content-Type": "image/jpeg",
+      "Cache-Control": "public, immutable, no-transform, max-age=3600",
+    },
+  });
 }
