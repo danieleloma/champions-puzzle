@@ -180,10 +180,14 @@ export default function ClubPageClient() {
         </div>
 
         {/* ── Hero — full width, no overflow clip so icons bleed ────────── */}
+        {/* 32px top margin, not 16 — Figma (node 29:2582) gives the back
+            button row a flat 32px gap to the hero text below it (matching
+            the desktop page's own back-button gap), same as the 32px gap
+            /champions' mobile nav row keeps to "Choose your champion". */}
         <div
           style={{
             position: "relative",
-            margin:   "16px 16px 0",
+            margin:   "32px 16px 0",
             height:   250,
           }}
         >
@@ -242,13 +246,16 @@ export default function ClubPageClient() {
             </div>
           ))}
 
-          {/* Text overlay — top:123, centred */}
+          {/* Text overlay — top:103 (shifted up 20px from the Figma-spec
+              123 by request, so the title sits closer to the crest/badge
+              above it; the badge and ghost icons above keep their own
+              positions unchanged). */}
           <div
             style={{
               position:      "absolute",
               left:          0,
               right:         0,
-              top:           123,
+              top:           103,
               display:       "flex",
               flexDirection: "column",
               alignItems:    "center",
@@ -298,10 +305,12 @@ export default function ClubPageClient() {
           </div>
         </div>
 
-        {/* ── Game section — top:372 (63px gap after hero)  flex-col gap:32 ── */}
+        {/* ── Game section — margin-top shifted up 20px (63→43) along with
+            the text overlay above, so the gap between them stays the same
+            as before the shift. ── */}
         <div
           style={{
-            margin:        "63px 16px 40px",
+            margin:        "43px 16px 40px",
             display:       "flex",
             flexDirection: "column",
             gap:           32,
@@ -383,8 +392,8 @@ export default function ClubPageClient() {
       {/* top:57 matches the hub nav's position on /champions (this page's
           own logo/XP/Ranks row is hidden here, so the back button takes
           over that same row instead of sitting down at the content's own
-          top:200) — keeps the two pages' header rows aligned when
-          navigating between them. */}
+          top) — keeps the two pages' header rows aligned when navigating
+          between them. */}
       <button
         onClick={() => router.push("/champions")}
         style={{
@@ -408,12 +417,19 @@ export default function ClubPageClient() {
         </svg>
       </button>
 
-      {/* ── Content — cx=720  top=200  items-center  flex-col  gap=41 ── */}
+      {/* ── Content — cx=720  top=189  items-center  flex-col  gap=41 ──
+          Figma (node 29:2304) puts a flat 100px gap under the back-button
+          row, not a fixed top position: back button top:57 + its own 32px
+          height + 100px gap = 189. This used to be hardcoded to 200 (the
+          /champions page's own value), but that page's nav row is a taller
+          44px wordmark, not this 32px back button, so reusing the same
+          absolute top under-counted this page's gap as ~111px instead of
+          100px. */}
       <div
         style={{
           position:      "absolute",
           left:          "50%",
-          top:           200,
+          top:           189,
           transform:     "translateX(-50%)",
           display:       "flex",
           flexDirection: "column",
