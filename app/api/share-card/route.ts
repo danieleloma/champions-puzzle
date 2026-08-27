@@ -2,13 +2,14 @@ import { NextRequest } from "next/server";
 import { ImageResponse } from "next/og";
 import sharp from "sharp";
 import { createElement as h } from "react";
+import { BOLDONSE_TTF_BASE64, STOPWATCH_ICON_PNG_BASE64 } from "./assets";
 
 // Personalized "Challenge a Friend" share image — Figma node 191:1349
 // ("Can you beat my time?" card, not the on-screen "Puzzle Complete" one).
 // Attached as a native share-sheet file (see VictoryScreen's handleShare).
 //
-// This has failed three different ways before landing here, each confirmed
-// against the actual deployed/running route rather than assumed:
+// This has failed four different ways before landing here, each confirmed
+// against an actual deployed/running route rather than assumed:
 //  1. html2canvas (client-side DOM screenshot) raced the browser's own
 //     Boldonse/Geist webfonts and the stopwatch icon loading, and shipped
 //     tofu-box text with a blank icon in real shares.
@@ -26,12 +27,20 @@ import { createElement as h } from "react";
 //     through with the app's own .woff2 file, Satori's parser rejects
 //     WOFF2 outright ("Unsupported OpenType signature wOF2"). Fixed by
 //     decompressing it once (via the `wawoff2` package, not at request
-//     time) into public/fonts/Boldonse-Regular.ttf, which is what this
-//     route actually fetches.
-// This project's own site-wide app/opengraph-image.tsx already relies on
-// Satori's font handling working with zero system-font dependency, so
-// using it here isn't a new assumption — just needed a format Satori
-// actually accepts.
+//     time) into public/fonts/Boldonse-Regular.ttf.
+//  4. Fetching that .ttf (and the icon) from this deployment's own origin
+//     at request time worked locally but 500'd on an actual Vercel preview
+//     deployment: preview URLs sit behind Vercel's SSO deployment
+//     protection, and this route's own outbound self-fetch doesn't carry
+//     the incoming request's auth — it got back an HTML SSO interstitial
+//     instead of the font, which Satori failed to parse identically
+//     ("Unsupported OpenType signature <!DO"). Production sits on an
+//     exempted custom domain, so that exact failure likely wouldn't
+//     reproduce there, but a request-time dependency on this deployment's
+//     own reachability is exactly the kind of environment-specific
+//     fragility this route has hit repeatedly. Fixed by inlining both
+//     assets as base64 constants (./assets.ts, generated once) instead of
+//     fetching either at request time — nothing left to be unreachable.
 //
 // Satori only emits PNG; re-encoding through sharp as JPEG keeps the
 // attached file small the way the rest of this app's share images do.
@@ -41,37 +50,8 @@ const H = 1180;
 const ICON_SIZE = 280;
 const PAD = 48;
 
-// Cached across warm invocations of the same Lambda instance so these
-// self-fetches only happen once per container, not once per share.
-// .ttf, not the app's own .woff2 (app/fonts/Boldonse-Regular.woff2, used by
-// next/font/local for the real UI) — Satori's font parser rejects WOFF2
-// outright ("Unsupported OpenType signature wOF2"), confirmed by hitting
-// this route locally before adding the decompressed copy at
-// public/fonts/Boldonse-Regular.ttf (see that file's origin: decompressed
-// once via the `wawoff2` package, not converted at request time).
-let fontDataPromise: Promise<ArrayBuffer | null> | null = null;
-function getFontData(origin: string): Promise<ArrayBuffer | null> {
-  if (!fontDataPromise) {
-    fontDataPromise = fetch(new URL("/fonts/Boldonse-Regular.ttf", origin))
-      .then((res) => (res.ok ? res.arrayBuffer() : null))
-      .catch(() => null);
-  }
-  return fontDataPromise;
-}
-
-async function getIconDataUrl(origin: string): Promise<string | null> {
-  try {
-    const res = await fetch(new URL("/icons/3d/stopwatch.webp", origin));
-    if (!res.ok) return null;
-    const png = await sharp(Buffer.from(await res.arrayBuffer()))
-      .resize(ICON_SIZE, ICON_SIZE, { fit: "contain" })
-      .png()
-      .toBuffer();
-    return `data:image/png;base64,${png.toString("base64")}`;
-  } catch {
-    return null;
-  }
-}
+const FONT_DATA = Buffer.from(BOLDONSE_TTF_BASE64, "base64");
+const ICON_DATA_URL = `data:image/png;base64,${STOPWATCH_ICON_PNG_BASE64}`;
 
 export async function GET(request: NextRequest) {
   const params     = request.nextUrl.searchParams;
@@ -82,12 +62,6 @@ export async function GET(request: NextRequest) {
   const xp         = params.get("xp") ?? "0";
   const rankParam  = params.get("rank");
   const rank       = rankParam ? `#${rankParam} Globally` : null;
-
-  const origin = request.nextUrl.origin;
-  const [fontData, iconDataUrl] = await Promise.all([
-    getFontData(origin),
-    getIconDataUrl(origin),
-  ]);
 
   const rows: [string, string, boolean][] = [
     ["Time",       time,        false],
@@ -100,7 +74,7 @@ export async function GET(request: NextRequest) {
   const tree = h(
     "div",
     { style: { width: W, minHeight: H, display: "flex", flexDirection: "column", alignItems: "center", background: "#0d0d0d", padding: `${PAD}px` } },
-    iconDataUrl && h("img", { src: iconDataUrl, width: ICON_SIZE, height: ICON_SIZE }),
+    h("img", { src: ICON_DATA_URL, width: ICON_SIZE, height: ICON_SIZE }),
     h(
       "div",
       { style: { display: "flex", flexDirection: "column", width: "100%", marginTop: 48 } },
@@ -131,7 +105,7 @@ export async function GET(request: NextRequest) {
   const pngResponse = new ImageResponse(tree, {
     width:  W,
     height: H,
-    fonts:  fontData ? [{ name: "Boldonse", data: fontData, style: "normal", weight: 400 }] : [],
+    fonts:  [{ name: "Boldonse", data: FONT_DATA, style: "normal", weight: 400 }],
   });
 
   const pngBuffer  = Buffer.from(await pngResponse.arrayBuffer());
