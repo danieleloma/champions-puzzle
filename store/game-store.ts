@@ -177,3 +177,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({ isPaused: false, startTimeMs: Date.now() - elapsedMs });
   },
 }));
+
+if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
+  (window as unknown as { __TEST_gameStore?: typeof useGameStore }).__TEST_gameStore = useGameStore;
+}
