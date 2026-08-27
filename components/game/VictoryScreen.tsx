@@ -113,7 +113,8 @@ function LinkIcon() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
-  const cardRef = useRef<HTMLDivElement>(null);
+  const cardRef      = useRef<HTMLDivElement>(null);
+  const shareBlobRef = useRef<Blob | null>(null);
   const { puzzle, difficulty, elapsedMs, moveCount, hintsUsed, sessionToken, challenge } = useGameStore();
   const { user, addXP } = useUserStore();
 
@@ -123,6 +124,55 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
   const [scale,       setScale]       = useState(1);
   const [mobileScale, setMobileScale] = useState(1);
   const [isMobile,    setIsMobile]    = useState(false);
+
+  // Computed early (rather than after the `if (!puzzle)` guard below) so
+  // the prefetch effect can depend on them — they only need difficulty/
+  // elapsedMs/moveCount/hintsUsed, all already available from the store.
+  const score    = calculateScore({ difficulty, completionTimeMs: elapsedMs, moveCount, hintsUsed });
+  const xpEarned = calculateXP({ difficulty, completionTimeMs: elapsedMs, hintsUsed, score });
+
+  // Renders a purpose-built "Can you beat my time?" card server-side (Figma
+  // node 191:1349 — distinct from the "Puzzle Complete" card the player
+  // sees on-screen) via /api/share-card, and caches the resulting JPEG so
+  // tapping "Challenge a Friend" doesn't wait on it mid-click. This used to
+  // be a client-side html2canvas screenshot of a hidden DOM node, but in
+  // production that raced the Boldonse/Geist webfonts and the stopwatch
+  // icon actually being loaded at capture time — real shares went out with
+  // tofu-box text and a blank icon. Rendering server-side with sharp has no
+  // such race: the route draws plain SVG text and pulls the icon from this
+  // deployment's own static assets before compositing, so what comes back
+  // is deterministic regardless of the browser's font-loading state.
+  async function prefetchShareImage() {
+    const params = new URLSearchParams({
+      time:       formatTime(elapsedMs),
+      score:      score.toLocaleString(),
+      moves:      String(moveCount),
+      difficulty: difficulty.charAt(0).toUpperCase() + difficulty.slice(1),
+      xp:         String(xpEarned),
+    });
+    if (rank !== null) params.set("rank", String(rank));
+    try {
+      const res = await fetch(`/api/share-card?${params.toString()}`);
+      if (!res.ok) return;
+      const blob = await res.blob();
+      shareBlobRef.current = blob;
+      (window as unknown as { __TEST_lastShareBlob?: Blob }).__TEST_lastShareBlob = blob;
+    } catch {
+      // Sharing still works without an attached image — see handleShare.
+    }
+  }
+
+  // Fires once immediately on mount (rank is still null then) so the image
+  // is ready well before a player finds the share button, then again once
+  // the score submission below resolves and rank is known — that second
+  // fetch overwrites shareBlobRef with a version that includes "#N
+  // Globally". If the player taps share in between, they just get the
+  // rank-less version instantly rather than waiting on the network.
+  useEffect(() => {
+    if (!puzzle) return;
+    prefetchShareImage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [puzzle, rank]);
 
   useEffect(() => {
     const compute = () => {
@@ -203,7 +253,6 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
   }, [sessionToken, addXP]);
 
   if (!puzzle) return null;
-  const puzzleId = puzzle.id;
 
   const shareParams = new URLSearchParams({ challenge: String(elapsedMs), difficulty });
   if (user?.username) shareParams.set("from", user.username);
@@ -211,9 +260,6 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
 
   // Result vs. the friend's time this puzzle was opened to beat, if any.
   const beatChallenge = challenge ? elapsedMs <= challenge.targetMs : null;
-
-  const score    = calculateScore({ difficulty, completionTimeMs: elapsedMs, moveCount, hintsUsed });
-  const xpEarned = calculateXP({ difficulty, completionTimeMs: elapsedMs, hintsUsed, score });
 
   const stats = [
     { label: "Time",       value: formatTime(elapsedMs),                                            xp: false },
@@ -223,53 +269,35 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
     { label: "XP Earned",  value: `+${xpEarned} XP`,                                              xp: true  },
   ];
 
-  // Challenge a Friend: attaches a personalized stats snapshot (time,
-  // score, moves, XP) to the native share sheet alongside the link — same
+  // Challenge a Friend: attaches the server-rendered "Can you beat my
+  // time?" card (see prefetchShareImage above) to the native share sheet,
+  // plus a caption inviting the recipient to beat this run's time — same
   // pattern as YouTube Music's "Share Lyrics" flow (a branded image file +
-  // a separate link, not a bare URL relying on a chat app's own link-
-  // preview crawler). The snapshot is rendered server-side by
-  // /api/share-card (sharp, same approach as the per-puzzle OG image) so
-  // this only has to fetch a small (~100-150KB) already-composited JPEG,
-  // not rasterize the DOM client-side — the previous html2canvas version
-  // of this had real reliability problems (slow capture risked expiring
-  // the click's user-activation window before navigator.share() ran).
-  // A short abort timeout on that fetch protects the same window here: if
-  // the card isn't ready fast enough, share the bare link instead of
-  // stalling the tap. Falls back to a plain clipboard copy wherever
-  // navigator.share isn't supported (most desktop browsers). Either way
-  // the link carries this run's time as a challenge target — see the
-  // ghost-race indicator in PlayPageClient.
-  async function handleShare() {
-    const cardParams = new URLSearchParams({
-      puzzleId:   puzzleId,
-      timeMs:     String(elapsedMs),
-      score:      String(score),
-      moves:      String(moveCount),
-      difficulty,
-      xp:         String(xpEarned),
-    });
-    if (rank !== null) cardParams.set("rank", String(rank));
+  // text/link, not a bare URL relying on the receiving app's own link-
+  // preview crawler). The image is normally already sitting in
+  // shareBlobRef by the time this runs (prefetched in the background as
+  // soon as the puzzle completed); if it isn't ready yet, this waits up to
+  // 1.5s before giving up on the image and sharing text-only, so a slow
+  // fetch can't stall the tap past the browser's user-activation window.
+  // Falls back to a plain clipboard copy wherever navigator.share isn't
+  // supported (most desktop browsers).
+  const shareText = `I solved "${puzzle.title}" in ${formatTime(elapsedMs)} — think you can beat it? ${shareUrl}`;
 
+  async function handleShare() {
     let file: File | null = null;
     if (typeof navigator.canShare === "function") {
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 1500);
-        const res = await fetch(`/api/share-card?${cardParams.toString()}`, { signal: controller.signal });
-        clearTimeout(timeout);
-        if (res.ok) {
-          const blob = await res.blob();
-          const candidate = new File([blob], "champions-puzzle.jpg", { type: blob.type || "image/jpeg" });
-          if (navigator.canShare({ files: [candidate] })) file = candidate;
-        }
-      } catch {
-        // Card fetch failed or timed out — share the bare link below.
+      if (!shareBlobRef.current) {
+        await Promise.race([prefetchShareImage(), new Promise((r) => setTimeout(r, 1500))]);
+      }
+      if (shareBlobRef.current) {
+        const candidate = new File([shareBlobRef.current], "champions-puzzle.jpg", { type: shareBlobRef.current.type || "image/jpeg" });
+        if (navigator.canShare({ files: [candidate] })) file = candidate;
       }
     }
 
     if (navigator.share) {
       try {
-        await navigator.share(file ? { files: [file], text: shareUrl } : { url: shareUrl });
+        await navigator.share(file ? { files: [file], text: shareText } : { text: shareText });
         return;
       } catch (err) {
         // AbortError = user dismissed the share sheet — respect that
@@ -277,7 +305,7 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
         if (err instanceof Error && err.name === "AbortError") return;
       }
     }
-    await navigator.clipboard.writeText(shareUrl);
+    await navigator.clipboard.writeText(shareText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -319,7 +347,9 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
         </div>
       )}
 
-      {/* Stats card */}
+      {/* Stats card — player-facing "Puzzle Complete" (Figma 30:1246 / 21:1418).
+          Not the share image — that's rendered server-side, see
+          prefetchShareImage/handleShare above. */}
       <div
         style={{
           backgroundColor: "#0d0d0d",
@@ -332,7 +362,6 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
           width:           "100%",
         }}
       >
-        {/* Stopwatch */}
         <Icon3D name="stopwatch" size={160} loading="eager" />
 
         {/* Title + rank */}
