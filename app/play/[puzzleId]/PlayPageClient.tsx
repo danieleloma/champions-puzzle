@@ -672,127 +672,134 @@ export default function PlayPageClient() {
           </div>
         </div>
 
-        {/* ── Hints-exhausted overlay — Figma node 50:2576 ─────────────── */}
-        {/* Shows when isPaused (last hint consumed) and puzzle not yet solved  */}
-        {isPaused && !isCompleted && (
-          <>
-            {/* Backdrop — blur + dark tint over the full 1440×1024 frame */}
-            <div
-              style={{
-                position:       "absolute",
-                inset:          0,
-                backdropFilter: "blur(4px)",
-                background:     "rgba(22,22,22,0.9)",
-                zIndex:         10,
-              }}
-            />
+      </div>
 
-            {/* Modal card — 440×465 px, centred */}
-            {/* Figma: left 50%, top calc(50%+0.5px), translate(-50%,-50%), bg #0d0d0d, rounded-24 */}
+      {/* ── Hints-exhausted overlay — Figma node 50:2576 ───────────────────
+          Rendered as a sibling of the scaled frame (see the Victory overlay
+          comment below for why): that frame has `transform: scale(...)`,
+          which makes it the containing block for any `position: fixed`
+          descendant, so this overlay's backdrop must live outside it to
+          actually fill the real viewport instead of just the 1440×1024
+          frame box (leaving the page's #0f0f10 background exposed as bars/
+          a grey seam on screens whose aspect ratio doesn't match the frame's). */}
+      {/* Shows when isPaused (last hint consumed) and puzzle not yet solved */}
+      {isPaused && !isCompleted && (
+        <>
+          {/* Backdrop — blur + dark tint over the full viewport */}
+          <div
+            style={{
+              position:       "fixed",
+              inset:          0,
+              backdropFilter: "blur(4px)",
+              background:     "rgba(22,22,22,0.9)",
+              zIndex:         10,
+            }}
+          />
+
+          {/* Modal card — 440×465 px, centred */}
+          {/* Figma: left 50%, top calc(50%+0.5px), translate(-50%,-50%), bg #0d0d0d, rounded-24 */}
+          <div
+            style={{
+              position:       "fixed",
+              left:           "50%",
+              top:            "calc(50% + 0.5px)",
+              transform:      "translate(-50%, -50%)",
+              width:          440,
+              height:         465,
+              background:     "#0d0d0d",
+              borderRadius:   24,
+              zIndex:         11,
+              display:        "flex",
+              alignItems:     "center",
+              justifyContent: "center",
+            }}
+          >
+            {/* Inner content — 382×395 px */}
             <div
               style={{
-                position:       "absolute",
-                left:           "50%",
-                top:            "calc(50% + 0.5px)",
-                transform:      "translate(-50%, -50%)",
-                width:          440,
-                height:         465,
-                background:     "#0d0d0d",
-                borderRadius:   24,
-                zIndex:         11,
+                width:          382,
+                height:         395,
                 display:        "flex",
+                flexDirection:  "column",
                 alignItems:     "center",
-                justifyContent: "center",
+                justifyContent: "space-between",
               }}
             >
-              {/* Inner content — 382×395 px */}
+              {/* Top: icon + text block */}
               <div
                 style={{
-                  width:          382,
-                  height:         395,
                   display:        "flex",
                   flexDirection:  "column",
+                  gap:            16,
                   alignItems:     "center",
-                  justifyContent: "space-between",
+                  width:          "100%",
                 }}
               >
-                {/* Top: icon + text block */}
+                {/* 3D red card — 160×160px */}
+                <Icon3D name="red-card" size={160} loading="eager" />
+
+                {/* Text — gap 4 */}
                 <div
                   style={{
-                    display:        "flex",
-                    flexDirection:  "column",
-                    gap:            16,
-                    alignItems:     "center",
-                    width:          "100%",
+                    display:       "flex",
+                    flexDirection: "column",
+                    gap:           4,
+                    alignItems:    "center",
+                    textAlign:     "center",
+                    width:         "100%",
                   }}
                 >
-                  {/* 3D red card — 160×160px */}
-                  <Icon3D name="red-card" size={160} loading="eager" />
-
-                  {/* Text — gap 4 */}
-                  <div
+                  {/* "You're on your own" — Boldonse 20px white */}
+                  <span
                     style={{
-                      display:       "flex",
-                      flexDirection: "column",
-                      gap:           4,
-                      alignItems:    "center",
-                      textAlign:     "center",
-                      width:         "100%",
+                      fontFamily: "var(--font-boldonse), sans-serif",
+                      fontSize:   20,
+                      lineHeight: "normal",
+                      color:      "#fff",
                     }}
                   >
-                    {/* "You're on your own" — Boldonse 20px white */}
-                    <span
-                      style={{
-                        fontFamily: "var(--font-boldonse), sans-serif",
-                        fontSize:   20,
-                        lineHeight: "normal",
-                        color:      "#fff",
-                      }}
-                    >
-                      You&apos;re on your own
-                    </span>
-                    {/* Body — Geist Medium 16px / lh 24px / #929498 */}
-                    <span
-                      style={{
-                        fontFamily: "var(--font-geist-sans), sans-serif",
-                        fontWeight: 500,
-                        fontSize:   16,
-                        lineHeight: "24px",
-                        color:      "#929498",
-                        whiteSpace: "pre",
-                      }}
-                    >
-                      {"You have exhausted your hints. \nDon’t worry, we paused the time"}
-                    </span>
-                  </div>
+                    You&apos;re on your own
+                  </span>
+                  {/* Body — Geist Medium 16px / lh 24px / #929498 */}
+                  <span
+                    style={{
+                      fontFamily: "var(--font-geist-sans), sans-serif",
+                      fontWeight: 500,
+                      fontSize:   16,
+                      lineHeight: "24px",
+                      color:      "#929498",
+                      whiteSpace: "pre",
+                    }}
+                  >
+                    {"You have exhausted your hints. \nDon’t worry, we paused the time"}
+                  </span>
                 </div>
-
-                {/* CONTINUE — bg #252627 rounded-1000 Boldonse 16px white, hover grey-800 */}
-                <button
-                  onClick={resumeGame}
-                  className="bg-[#252627] hover:bg-[#3a3b3e] transition-colors"
-                  style={{
-                    width:           "100%",
-                    borderRadius:    1000,
-                    padding:         "24px 20px",
-                    fontFamily:      "var(--font-boldonse), sans-serif",
-                    fontSize:        16,
-                    lineHeight:      "22px",
-                    letterSpacing:   "-0.43px",
-                    color:           "#fff",
-                    border:          "none",
-                    cursor:          "pointer",
-                    textAlign:       "center",
-                  }}
-                >
-                  CONTINUE
-                </button>
               </div>
-            </div>
-          </>
-        )}
 
-      </div>
+              {/* CONTINUE — bg #252627 rounded-1000 Boldonse 16px white, hover grey-800 */}
+              <button
+                onClick={resumeGame}
+                className="bg-[#252627] hover:bg-[#3a3b3e] transition-colors"
+                style={{
+                  width:           "100%",
+                  borderRadius:    1000,
+                  padding:         "24px 20px",
+                  fontFamily:      "var(--font-boldonse), sans-serif",
+                  fontSize:        16,
+                  lineHeight:      "22px",
+                  letterSpacing:   "-0.43px",
+                  color:           "#fff",
+                  border:          "none",
+                  cursor:          "pointer",
+                  textAlign:       "center",
+                }}
+              >
+                CONTINUE
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* ── Victory overlay ───────────────────────────────────────────────
           Rendered as a sibling of the scaled frame, not inside it: that

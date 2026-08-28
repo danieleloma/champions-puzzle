@@ -15,7 +15,7 @@ const boldonse = localFont({
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
-  title: "Arsenal Puzzle — Champions 2025–26",
+  title: "Champions Puzzle",
   description:
     "Solve jigsaw puzzles from Arsenal's Premier League title celebration. Compete globally, share your victories.",
   keywords: ["Arsenal", "Premier League", "Jigsaw", "Puzzle", "Champions", "2026"],

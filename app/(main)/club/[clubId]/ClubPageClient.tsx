@@ -161,6 +161,7 @@ export default function ClubPageClient() {
         <div style={{ padding: "24px 16px 0" }}>
           <button
             onClick={() => router.push("/champions")}
+            className="bg-transparent hover:bg-[#161617] transition-colors"
             style={{
               border:          "1px solid #73767b",
               borderRadius:    4,
@@ -169,7 +170,6 @@ export default function ClubPageClient() {
               display:         "flex",
               alignItems:      "center",
               justifyContent:  "center",
-              background:      "transparent",
               cursor:          "pointer",
             }}
           >
@@ -396,6 +396,7 @@ export default function ClubPageClient() {
           between them. */}
       <button
         onClick={() => router.push("/champions")}
+        className="bg-transparent hover:bg-[#161617] transition-colors"
         style={{
           position:        "absolute",
           left:            `calc(50% - ${CONTENT_W / 2}px)`,
@@ -408,7 +409,6 @@ export default function ClubPageClient() {
           display:         "flex",
           alignItems:      "center",
           justifyContent:  "center",
-          background:      "transparent",
           cursor:          "pointer",
         }}
       >
