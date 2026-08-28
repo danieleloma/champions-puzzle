@@ -7,6 +7,7 @@ import { playClick } from "@/lib/sounds";
 // ── Figma node 50:1077 "difficulty-type" ─────────────────────────────────────
 //
 //  Default   — bg #161617  border #252627
+//  Hover     — bg grey-800 #3a3b3e (unselected only), per request
 //  Selected  — border #ff6a0c  shadow: 0px 1px 20px 1px rgba(255,106,12,0.5)
 //
 //  Left:  level name  Geist Med 16/24 white
@@ -37,7 +38,7 @@ export function DifficultyCard({
         "bg-[#161617] border transition-all",
         selected
           ? "border-[#ff6a0c] shadow-[0px_1px_20px_1px_rgba(255,106,12,0.5)]"
-          : "border-[#252627]",
+          : "border-[#252627] hover:bg-[#3a3b3e]",
         className,
       )}
       {...props}

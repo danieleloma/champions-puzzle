@@ -6,6 +6,7 @@ import { playClick } from "@/lib/sounds";
 // ── Figma node 28:1715 "BadgeContainerState" ─────────────────────────────────
 //
 //  Default   — all pills: bg #252627, white text, Geist Mono Med 14/20
+//  Hover     — unselected pills: bg grey-800 #3a3b3e, per request
 //  Selected  — active pill floats to the front:
 //                bg #fafafa, text #3a3b3e, 16px × icon
 //              then a 1px vertical divider (h-28px, #3a3b3e)
@@ -82,9 +83,10 @@ export function BadgeContainer({
                 "flex items-center justify-center gap-1.5 shrink-0 overflow-hidden",
                 "h-8 px-3 rounded-[32px]",
                 "font-mono font-medium text-sm leading-5 whitespace-nowrap",
+                "transition-colors",
                 isActive
                   ? "bg-[#fafafa] text-[#3a3b3e]"
-                  : "bg-[#252627] text-white",
+                  : "bg-[#252627] text-white hover:bg-[#3a3b3e]",
               )}
             >
               {item.label}

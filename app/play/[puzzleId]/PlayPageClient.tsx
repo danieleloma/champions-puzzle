@@ -76,6 +76,7 @@ function LightbulbIcon() {
 
 // ── Shared nav badge container ─────────────────────────────────────────────────
 // Figma: border 1px #73767b  radius 4px  h-32px  flex items-center justify-center
+// Hover: bg grey-900 (#161617), per request.
 
 function NavBadge({
   children,
@@ -94,6 +95,7 @@ function NavBadge({
     <button
       onClick={onClick}
       disabled={disabled}
+      className="bg-transparent enabled:hover:bg-[#161617] transition-colors"
       style={{
         border:          "1px solid #73767b",
         borderRadius:    4,
@@ -105,7 +107,6 @@ function NavBadge({
         gap:             4,
         paddingLeft:     6,
         paddingRight:    6,
-        background:      "transparent",
         cursor:          onClick ? "pointer" : "default",
         opacity:         disabled ? 0.35 : 1,
         flexShrink:      0,
@@ -384,7 +385,8 @@ export default function PlayPageClient() {
               </div>
               <button
                 onClick={resumeGame}
-                style={{ width: "100%", background: "#252627", borderRadius: 1000, padding: "20px 16px", fontFamily: "var(--font-boldonse), sans-serif", fontSize: 16, color: "#fff", border: "none", cursor: "pointer" }}
+                className="bg-[#252627] hover:bg-[#3a3b3e] transition-colors"
+                style={{ width: "100%", borderRadius: 1000, padding: "20px 16px", fontFamily: "var(--font-boldonse), sans-serif", fontSize: 16, color: "#fff", border: "none", cursor: "pointer" }}
               >
                 CONTINUE
               </button>
@@ -765,12 +767,12 @@ export default function PlayPageClient() {
                   </div>
                 </div>
 
-                {/* CONTINUE — bg #252627 rounded-1000 Boldonse 16px white */}
+                {/* CONTINUE — bg #252627 rounded-1000 Boldonse 16px white, hover grey-800 */}
                 <button
                   onClick={resumeGame}
+                  className="bg-[#252627] hover:bg-[#3a3b3e] transition-colors"
                   style={{
                     width:           "100%",
-                    background:      "#252627",
                     borderRadius:    1000,
                     padding:         "24px 20px",
                     fontFamily:      "var(--font-boldonse), sans-serif",
