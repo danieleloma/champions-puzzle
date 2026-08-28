@@ -246,16 +246,16 @@ export default function ClubPageClient() {
             </div>
           ))}
 
-          {/* Text overlay — top:103 (shifted up 20px from the Figma-spec
-              123 by request, so the title sits closer to the crest/badge
-              above it; the badge and ghost icons above keep their own
-              positions unchanged). */}
+          {/* Text overlay — top:63 (Figma-spec 123, shifted up 20px, then a
+              further 40px by request — 103→63 — so only the "Relive the
+              Glory" text block moves; the badge and ghost icons above keep
+              their own positions unchanged). */}
           <div
             style={{
               position:      "absolute",
               left:          0,
               right:         0,
-              top:           103,
+              top:           63,
               display:       "flex",
               flexDirection: "column",
               alignItems:    "center",
@@ -440,8 +440,11 @@ export default function ClubPageClient() {
 
         {/* ── Hero — 408 × 225 px ────────────────────────────────────── */}
         {/* Figma 29:2549: badge at top-0 centred (60% opacity), ghost icons
-            at absolute positions (20% opacity), text overlaid from top 33px */}
-        <div style={{ position: "relative", width: 408, height: 225, flexShrink: 0 }}>
+            at absolute positions (20% opacity), text overlaid from top 33px.
+            transform:translateY(-40) shifts the whole hero (crest, ghost
+            icons, text) up 40px per request without affecting the game
+            section's layout position below it. */}
+        <div style={{ position: "relative", width: 408, height: 225, flexShrink: 0, transform: "translateY(-40px)" }}>
 
           {/* Ghost icons — 20% opacity, 123px, absolute within hero */}
           {club.heroIcons.map((hi, i) => (
