@@ -3,7 +3,7 @@
 // ── Figma node 29:3387 desktop / 21:900 mobile ────────────────────────────────
 //
 //  Mobile frame: 440 × 926 (iPhone 13 Mini)
-//  Medal decoration: left:105 bottom:-192.3 container:597px img:480px rot:16.63°
+//  Medal decoration: right:-262.302 bottom:-192.3 size:597.302px, no rotation
 //  Content: centred (left:50% -translate-x-1/2) top:24 width:408 gap:24
 //    ├── Header row: back (32×32) + flex-1 title centre + w-52 placeholder
 //    ├── MenuSwitcher
@@ -75,25 +75,24 @@ export default function LeaderboardPage() {
     return (
       <div className="min-h-screen overflow-y-auto bg-[#0f0f10] relative">
 
-        {/* Medal — decorative, fixed to the viewport corner (Figma px values,
-            not rescaled — same convention as club/champions hero icons) */}
+        {/* Medal — decorative, pinned to the viewport's bottom-right corner
+            (Figma node 21:900: 597.302px icon, no rotation, bottom:-192.3).
+            Anchored with `right` (not the Figma-literal `left:105`, which
+            assumed the 440px reference frame and drifted off the right edge
+            on any other device width) so it stays flush to the actual
+            corner regardless of viewport width. */}
         <div
           style={{
-            position:       "fixed",
-            left:           105,
-            bottom:         -192.3,
-            width:          597.302,
-            height:         597.302,
-            display:        "flex",
-            alignItems:     "center",
-            justifyContent: "center",
-            pointerEvents:  "none",
-            zIndex:         0,
+            position:      "fixed",
+            right:         -262.302,
+            bottom:        -192.3,
+            width:         597.302,
+            height:        597.302,
+            pointerEvents: "none",
+            zIndex:        0,
           }}
         >
-          <div style={{ flexShrink: 0, transform: "rotate(16.63deg)" }}>
-            <Icon3D name="medal" size={480} loading="eager" />
-          </div>
+          <Icon3D name="medal" size={597} loading="eager" />
         </div>
 
         {/* Content — full width, 16px margins, gap:24 */}
