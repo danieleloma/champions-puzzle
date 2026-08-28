@@ -141,7 +141,7 @@ export default function LeaderboardPage() {
                 Leaderboard
               </h1>
               <p style={{ fontFamily: "var(--font-geist-mono), monospace", fontWeight: 500, fontSize: 15, lineHeight: "normal", letterSpacing: "-0.75px", color: "#929498", margin: 0 }}>
-                GUNFC Rankings
+                Global Rankings
               </p>
             </div>
 
@@ -182,12 +182,25 @@ export default function LeaderboardPage() {
             transformOrigin: "top left",
           }}
         >
-          {/* Medal decoration */}
+          {/* Medal decoration — Figma node 147:1424: 796.403px container
+              (bottom:-241.4 right:-302.4) centring a 640px icon, rotated
+              16.63deg. Was hardcoded to 220px, well below the design's 640px. */}
           <div
-            className="absolute bottom-[-60px] right-[-70px] pointer-events-none select-none z-0"
-            style={{ transform: "rotate(16.63deg)" }}
+            className="pointer-events-none select-none z-0"
+            style={{
+              position:       "absolute",
+              bottom:         -241.4,
+              right:          -302.4,
+              width:          796.403,
+              height:         796.403,
+              display:        "flex",
+              alignItems:     "center",
+              justifyContent: "center",
+            }}
           >
-            <Image src="/icons/3d/medal.webp" alt="" width={220} height={220} />
+            <div style={{ flexShrink: 0, transform: "rotate(16.63deg)" }}>
+              <Image src="/icons/3d/medal.webp" alt="" width={640} height={640} />
+            </div>
           </div>
 
           {/* Header — centred, width CONTENT_W (matches content below) */}
@@ -208,7 +221,7 @@ export default function LeaderboardPage() {
             <div className="flex flex-col items-center">
               <h1 className="font-boldonse text-white text-[20px] leading-normal">Leaderboard</h1>
               <p className="font-mono font-medium text-[15px] text-[#929498] tracking-[-0.75px] leading-normal">
-                GUNFC Rankings
+                Global Rankings
               </p>
             </div>
 
