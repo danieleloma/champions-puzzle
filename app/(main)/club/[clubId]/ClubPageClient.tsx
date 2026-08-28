@@ -306,11 +306,11 @@ export default function ClubPageClient() {
         </div>
 
         {/* ── Game section — margin-top shifted up 20px (63→43) along with
-            the text overlay above, so the gap between them stays the same
-            as before the shift. ── */}
+            the text overlay above, then a further 40px per request (43→3),
+            matching the desktop game section's -40px shift. ── */}
         <div
           style={{
-            margin:        "43px 16px 40px",
+            margin:        "3px 16px 40px",
             display:       "flex",
             flexDirection: "column",
             gap:           32,
@@ -558,7 +558,9 @@ export default function ClubPageClient() {
         </div>
 
         {/* ── Game section — CONTENT_W wide  flex-col  gap=32 ── */}
-        <div style={{ width: CONTENT_W, display: "flex", flexDirection: "column", gap: 32 }}>
+        {/* marginTop:-40 pulls this section up 40px from the hero's gap:41
+            flex spacing above, per request — hero stays at its own position. */}
+        <div style={{ width: CONTENT_W, marginTop: -40, display: "flex", flexDirection: "column", gap: 32 }}>
 
           {/* Difficulty section — gap 10 */}
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
