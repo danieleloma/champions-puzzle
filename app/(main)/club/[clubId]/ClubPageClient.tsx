@@ -185,14 +185,17 @@ export default function ClubPageClient() {
         </div>
 
         {/* ── Hero — full width, no overflow clip so icons bleed ────────── */}
-        {/* 32px top margin, not 16 — Figma (node 29:2582) gives the back
-            button row a flat 32px gap to the hero text below it (matching
-            the desktop page's own back-button gap), same as the 32px gap
-            /champions' mobile nav row keeps to "Choose your champion". */}
+        {/* Figma (node 29:2582) gives the back button row a flat 32px gap to
+            the hero text below it, matching the desktop page's own
+            back-button gap — shifted up a further 40px by request (32→-8)
+            so the whole hero+game section (badge, ghost icons, text, and
+            everything in the game section below, which follows in normal
+            flow) moves up together, without touching the back button above
+            it. */}
         <div
           style={{
             position: "relative",
-            margin:   "32px 16px 0",
+            margin:   "-8px 16px 0",
             height:   250,
           }}
         >
