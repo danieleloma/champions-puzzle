@@ -226,7 +226,7 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
   useEffect(() => {
     if (submittedRef.current || !sessionToken) return;
     const state = useGameStore.getState();
-    const { user } = useUserStore.getState();
+    const { user, setUser } = useUserStore.getState();
     if (!state.puzzle || !user) return;
     submittedRef.current = true;
 
@@ -242,18 +242,45 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
       // lib/anti-cheat.ts validateScore / lib/puzzle-engine.ts replayMoveLog.
       move_log: state.moveLog,
     };
-    fetch("/api/scores", {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify(payload),
-    })
-      .then(async (r) => {
-        const data = await r.json().catch(() => null);
-        if (!r.ok) {
-          // 422 (anti-cheat rejection), 409 (already-submitted session), a
-          // stale/unknown device, or a network blip — whatever the cause,
-          // the player should see *something* rather than a run that
-          // silently doesn't count. See the rendered submitError line below.
+
+    async function submitScore() {
+      const res = await fetch("/api/scores", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => null);
+      return { res, data };
+    }
+
+    submitScore()
+      .then(async ({ res, data }) => {
+        // A device the server has no record of (device_id valid, but no
+        // matching users row) — e.g. localStorage still says "onboarded"
+        // from before an account got removed server-side. Re-register the
+        // same username under this device_id (idempotent: /api/users just
+        // returns the existing row if one already matches) and retry once,
+        // rather than let an otherwise-legitimate run silently not count.
+        if (res.status === 404) {
+          const reg = await fetch("/api/users", {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ username: user.username, device_id }),
+          }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+
+          if (reg?.id) {
+            setUser(reg);
+            return submitScore();
+          }
+        }
+        return { res, data };
+      })
+      .then(({ res, data }) => {
+        if (!res.ok) {
+          // 422 (anti-cheat rejection), 409 (already-submitted session), or
+          // a network blip — whatever the cause, the player should see
+          // *something* rather than a run that silently doesn't count.
+          // See the rendered submitError line below.
           setSubmitError(true);
           return;
         }
