@@ -119,6 +119,7 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
   const { user, addXP } = useUserStore();
 
   const [rank,        setRank]        = useState<number | null>(null);
+  const [submitError, setSubmitError] = useState(false);
   const submittedRef = useRef(false);
   const [copied,      setCopied]      = useState(false);
   const [scale,       setScale]       = useState(1);
@@ -234,22 +235,32 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
       puzzle_id: state.puzzle.id,
       difficulty: state.difficulty,
       completion_time_ms: state.elapsedMs,
-      move_count: state.moveCount,
-      hints_used: state.hintsUsed,
       device_id,
       session_token: sessionToken,
+      // Server replays this against the session's server-issued shuffle to
+      // confirm the puzzle was actually, legally solved — see
+      // lib/anti-cheat.ts validateScore / lib/puzzle-engine.ts replayMoveLog.
+      move_log: state.moveLog,
     };
     fetch("/api/scores", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify(payload),
     })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.new_rank) setRank(data.new_rank);
-        if (data.xp_earned) addXP(data.xp_earned);
+      .then(async (r) => {
+        const data = await r.json().catch(() => null);
+        if (!r.ok) {
+          // 422 (anti-cheat rejection), 409 (already-submitted session), a
+          // stale/unknown device, or a network blip — whatever the cause,
+          // the player should see *something* rather than a run that
+          // silently doesn't count. See the rendered submitError line below.
+          setSubmitError(true);
+          return;
+        }
+        if (data?.new_rank) setRank(data.new_rank);
+        if (data?.xp_earned) addXP(data.xp_earned);
       })
-      .catch(() => {});
+      .catch(() => setSubmitError(true));
   }, [sessionToken, addXP]);
 
   if (!puzzle) return null;
@@ -261,12 +272,16 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
   // Result vs. the friend's time this puzzle was opened to beat, if any.
   const beatChallenge = challenge ? elapsedMs <= challenge.targetMs : null;
 
+  // Score/XP shown here are computed client-side for instant display, but
+  // if the submission was rejected/failed (see submitError above) they were
+  // never actually credited — showing them as if they counted would be
+  // actively misleading right next to the "couldn't be saved" message.
   const stats = [
     { label: "Time",       value: formatTime(elapsedMs),                                            xp: false },
-    { label: "Score",      value: score.toLocaleString(),                                           xp: false },
+    { label: "Score",      value: submitError ? "Not saved" : score.toLocaleString(),                xp: false },
     { label: "Moves",      value: moveCount.toString(),                                             xp: false },
     { label: "Difficulty", value: difficulty.charAt(0).toUpperCase() + difficulty.slice(1),        xp: false },
-    { label: "XP Earned",  value: `+${xpEarned} XP`,                                              xp: true  },
+    { label: "XP Earned",  value: submitError ? "Not saved" : `+${xpEarned} XP`,                    xp: !submitError },
   ];
 
   // Challenge a Friend: attaches the server-rendered "Can you beat my
@@ -372,6 +387,11 @@ export function VictoryScreen({ onReplay, onHome }: VictoryScreenProps) {
           {rank !== null && (
             <p style={{ fontFamily: "var(--font-geist-mono), monospace", fontWeight: 500, fontSize: 15, lineHeight: "normal", letterSpacing: "-0.75px", color: "#929498", margin: "4px 0 0", textShadow: "0px 4px 24px black" }}>
               #{rank} Globally
+            </p>
+          )}
+          {submitError && (
+            <p style={{ fontFamily: "var(--font-geist-mono), monospace", fontWeight: 500, fontSize: 13, lineHeight: "normal", letterSpacing: "-0.65px", color: "#929498", margin: "4px 0 0", textShadow: "0px 4px 24px black" }}>
+              Score couldn&apos;t be saved — check your connection and try replaying.
             </p>
           )}
         </div>

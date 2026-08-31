@@ -52,6 +52,11 @@ export interface Database {
           hints_used: number;
           completed: boolean;
           score: number;
+          // Nullable + only unique among non-null values (partial index) —
+          // see supabase/migrations/006_security_hardening.sql. Ties a
+          // score submission to the session it was issued for so the same
+          // session can never be submitted twice.
+          session_token: string | null;
           created_at: string;
         };
         Insert: Omit<Database["public"]["Tables"]["puzzle_attempts"]["Row"], "id" | "created_at"> & {

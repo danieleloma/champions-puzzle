@@ -32,10 +32,19 @@ const MOBILE_H =  926;
 
 export default function LandingPage() {
   const router = useRouter();
-  const { isOnboarded } = useDeviceIdentity();
+  const { isOnboarded, isLoading } = useDeviceIdentity();
   const [scale,       setScale]       = useState(1);
   const [mobileScale, setMobileScale] = useState(1);
   const [isMobile,    setIsMobile]    = useState(false);
+
+  // A returning, already-onboarded visitor doesn't need the splash screen —
+  // bounce straight to /champions rather than making them click through it
+  // again. Gated on isLoading so this can't fire on the flash of
+  // isOnboarded's default (false) before device-identity has actually
+  // resolved from localStorage.
+  useEffect(() => {
+    if (!isLoading && isOnboarded) router.replace("/champions");
+  }, [isLoading, isOnboarded, router]);
 
   useEffect(() => {
     const compute = () => {

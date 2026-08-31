@@ -18,14 +18,20 @@ export function calculateScore({
   hintsUsed: number;
 }): number {
   const { tileCount, xpMultiplier } = DIFFICULTY_CONFIG[difficulty];
-  const seconds = completionTimeMs / 1000;
+  // A backward system-clock jump mid-puzzle could otherwise make elapsed
+  // time negative, turning the time penalty into an unbounded bonus.
+  const seconds = Math.max(0, completionTimeMs) / 1000;
 
   const baseScore = BASE_SCORE * xpMultiplier;
   const timePenalty = Math.min(seconds * TIME_PENALTY_PER_SECOND, baseScore * 0.8);
   const hintPenalty = hintsUsed * HINT_PENALTY;
 
   const perfectMoves = tileCount;
-  const moveEfficiency = Math.max(0, perfectMoves - (moveCount - perfectMoves));
+  // Clamped to perfectMoves: solving in fewer than tileCount moves (possible
+  // — a single swap can place two tiles at once) would otherwise push
+  // moveEfficiency above perfectMoves and the bonus past its intended
+  // MOVE_EFFICIENCY_BONUS cap.
+  const moveEfficiency = Math.min(perfectMoves, Math.max(0, perfectMoves - (moveCount - perfectMoves)));
   const moveBonus = (moveEfficiency / perfectMoves) * MOVE_EFFICIENCY_BONUS;
 
   const raw = baseScore - timePenalty - hintPenalty + moveBonus;
@@ -50,7 +56,8 @@ export function calculateXP({
   return Math.round((base + speedBonus + noHintBonus) * xpMultiplier);
 }
 
-export function formatTime(ms: number): string {
+export function formatTime(rawMs: number): string {
+  const ms = Math.max(0, rawMs);
   if (ms < 1000) return `${ms}ms`;
   const totalSeconds = Math.floor(ms / 1000);
   const minutes = Math.floor(totalSeconds / 60);

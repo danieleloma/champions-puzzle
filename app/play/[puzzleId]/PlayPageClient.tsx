@@ -18,6 +18,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
+import { useShallow } from "zustand/react/shallow";
 import { useGameStore } from "@/store/game-store";
 import { useDeviceIdentity } from "@/hooks/useDeviceIdentity";
 import { useTimer } from "@/hooks/useTimer";
@@ -118,6 +119,43 @@ function NavBadge({
   );
 }
 
+// ── TimerReadout ──────────────────────────────────────────────────────────────
+//
+// Isolated into its own leaf component subscribed to only `elapsedMs` — the
+// timer ticks this field up to 10x/sec (see hooks/useTimer.ts), and without
+// this isolation every tick re-rendered the entire page (and, transitively,
+// every tile in the board) since PlayPageClient's own useGameStore call used
+// to pull `elapsedMs` in with everything else it reads.
+
+function TimerReadout({
+  isStarted,
+  isCompleted,
+  challenge,
+  variant,
+}: {
+  isStarted: boolean;
+  isCompleted: boolean;
+  challenge: { fromUsername: string; targetMs: number } | null;
+  variant: "mobile" | "desktop";
+}) {
+  const elapsedMs = useGameStore((s) => s.elapsedMs);
+  const valueStyle: React.CSSProperties =
+    variant === "mobile"
+      ? { fontFamily: "var(--font-geist-mono), monospace", fontWeight: 500, fontSize: 48, letterSpacing: "-2.4px", color: isStarted && !isCompleted ? "#fff" : "#929498", textAlign: "right", minWidth: 109, height: 56, display: "flex", alignItems: "center", justifyContent: "flex-end" }
+      : { fontFamily: "var(--font-geist-mono), monospace", fontWeight: 500, fontSize: 48, lineHeight: "normal", letterSpacing: "-2.4px", color: isStarted && !isCompleted ? "#fff" : "#929498", textAlign: "right" };
+
+  return (
+    <>
+      <span style={valueStyle}>{formatTime(elapsedMs)}</span>
+      {challenge && (
+        <span style={{ fontFamily: "var(--font-geist-mono), monospace", fontWeight: 500, fontSize: 13, letterSpacing: "-0.65px", color: elapsedMs > challenge.targetMs ? "#cc261a" : "#73767b", whiteSpace: "nowrap" }}>
+          Beat {challenge.fromUsername}: {formatTime(challenge.targetMs)}
+        </span>
+      )}
+    </>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function PlayPageClient() {
@@ -136,17 +174,20 @@ export default function PlayPageClient() {
       ? (challengeDifficultyParam as Difficulty)
       : null;
 
+  // Scoped + shallow-compared — deliberately excludes elapsedMs (see
+  // TimerReadout above) so the timer ticking doesn't re-render this whole
+  // page and its puzzle board on every tick.
   const {
     puzzle,
     difficulty,
     tiles,
     moveCount,
-    elapsedMs,
     isStarted,
     isCompleted,
     isPaused,
     previewMode,
     hintsUsed,
+    sessionToken,
     challenge,
     resetGame,
     resumeGame,
@@ -154,7 +195,27 @@ export default function PlayPageClient() {
     useHint,
     setPuzzle,
     setChallenge,
-  } = useGameStore();
+  } = useGameStore(
+    useShallow((s) => ({
+      puzzle: s.puzzle,
+      difficulty: s.difficulty,
+      tiles: s.tiles,
+      moveCount: s.moveCount,
+      isStarted: s.isStarted,
+      isCompleted: s.isCompleted,
+      isPaused: s.isPaused,
+      previewMode: s.previewMode,
+      hintsUsed: s.hintsUsed,
+      sessionToken: s.sessionToken,
+      challenge: s.challenge,
+      resetGame: s.resetGame,
+      resumeGame: s.resumeGame,
+      togglePreview: s.togglePreview,
+      useHint: s.useHint,
+      setPuzzle: s.setPuzzle,
+      setChallenge: s.setChallenge,
+    }))
+  );
 
   const { isOnboarded, isLoading } = useDeviceIdentity();
 
@@ -245,6 +306,9 @@ export default function PlayPageClient() {
   const pct         = useMemo(() => getCompletionPercent(tiles), [tiles]);
   const hintsLeft   = Math.max(0, cfg.hintLimit - hintsUsed);
   const noHints     = cfg.hintLimit === 0;
+  // The server-issued shuffle/session hasn't replaced the provisional local
+  // one yet — see game-store.ts requestSessionToken.
+  const boardLocked = !sessionToken;
 
   if (isFetching) {
     return (
@@ -295,8 +359,8 @@ export default function PlayPageClient() {
                   <EyeIcon active={previewMode} />
                 </NavBadge>
                 <NavBadge
-                  onClick={noHints || hintsLeft === 0 ? undefined : useHint}
-                  disabled={isCompleted || noHints || hintsLeft === 0}
+                  onClick={noHints || hintsLeft === 0 || boardLocked ? undefined : useHint}
+                  disabled={isCompleted || noHints || hintsLeft === 0 || boardLocked}
                   style={{ paddingLeft: 4, paddingRight: 6, width: undefined }}
                 >
                   <LightbulbIcon />
@@ -323,14 +387,7 @@ export default function PlayPageClient() {
                 <span style={{ fontFamily: "var(--font-geist-sans), sans-serif", fontWeight: 500, fontSize: 24, letterSpacing: "-1.2px", color: "#929498", whiteSpace: "nowrap" }}>
                   {moveCount} move{moveCount !== 1 ? "s" : ""}
                 </span>
-                <span style={{ fontFamily: "var(--font-geist-mono), monospace", fontWeight: 500, fontSize: 48, letterSpacing: "-2.4px", color: isStarted && !isCompleted ? "#fff" : "#929498", textAlign: "right", minWidth: 109, height: 56, display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
-                  {formatTime(elapsedMs)}
-                </span>
-                {challenge && (
-                  <span style={{ fontFamily: "var(--font-geist-mono), monospace", fontWeight: 500, fontSize: 13, letterSpacing: "-0.65px", color: elapsedMs > challenge.targetMs ? "#cc261a" : "#73767b", whiteSpace: "nowrap" }}>
-                    Beat {challenge.fromUsername}: {formatTime(challenge.targetMs)}
-                  </span>
-                )}
+                <TimerReadout isStarted={isStarted} isCompleted={isCompleted} challenge={challenge} variant="mobile" />
               </div>
             </div>
           </div>
@@ -446,8 +503,8 @@ export default function PlayPageClient() {
 
             {/* Hint badge — lightbulb + "X/Y" count */}
             <NavBadge
-              onClick={noHints || hintsLeft === 0 ? undefined : useHint}
-              disabled={isCompleted || noHints || hintsLeft === 0}
+              onClick={noHints || hintsLeft === 0 || boardLocked ? undefined : useHint}
+              disabled={isCompleted || noHints || hintsLeft === 0 || boardLocked}
               style={{ paddingLeft: 4, paddingRight: 6, width: undefined }}
             >
               <LightbulbIcon />
@@ -549,33 +606,7 @@ export default function PlayPageClient() {
                 {moveCount} move{moveCount !== 1 ? "s" : ""}
               </span>
               {/* Geist Mono Medium 48px — white once started, grey before */}
-              <span
-                style={{
-                  fontFamily:    "var(--font-geist-mono), monospace",
-                  fontWeight:    500,
-                  fontSize:      48,
-                  lineHeight:    "normal",
-                  letterSpacing: "-2.4px",
-                  color:         isStarted && !isCompleted ? "#fff" : "#929498",
-                  textAlign:     "right",
-                }}
-              >
-                {formatTime(elapsedMs)}
-              </span>
-              {challenge && (
-                <span
-                  style={{
-                    fontFamily:    "var(--font-geist-mono), monospace",
-                    fontWeight:    500,
-                    fontSize:      13,
-                    letterSpacing: "-0.65px",
-                    color:         elapsedMs > challenge.targetMs ? "#cc261a" : "#73767b",
-                    whiteSpace:    "nowrap",
-                  }}
-                >
-                  Beat {challenge.fromUsername}: {formatTime(challenge.targetMs)}
-                </span>
-              )}
+              <TimerReadout isStarted={isStarted} isCompleted={isCompleted} challenge={challenge} variant="desktop" />
             </div>
           </div>
 

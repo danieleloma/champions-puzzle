@@ -20,12 +20,12 @@ export async function POST(req: NextRequest) {
   }
 
   const { puzzle_id, difficulty, device_id } = parsed.data;
-  const session_token = issueSessionToken({
+  const { token: session_token, initial_order } = issueSessionToken({
     puzzle_id,
     difficulty,
     device_id,
     issued_at: Date.now(),
   });
 
-  return NextResponse.json({ session_token });
+  return NextResponse.json({ session_token, initial_order });
 }

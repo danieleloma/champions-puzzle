@@ -3,15 +3,28 @@ import { v4 as uuidv4 } from "uuid";
 const DEVICE_ID_KEY = "arsenal_puzzle_device_id";
 const USER_KEY = "arsenal_puzzle_user";
 
+// Safari Lockdown Mode, strict private-browsing/ITP configurations, storage
+// blocked by policy/extension, and some embedded webviews can throw on any
+// localStorage access, not just return null. Falls back to an in-memory id
+// for the lifetime of the tab so the app stays usable (just without
+// persistence across reloads) instead of throwing uncaught in a render
+// effect with no error boundary to catch it.
+let inMemoryDeviceId: string | null = null;
+
 export function getOrCreateDeviceId(): string {
   if (typeof window === "undefined") return "";
 
-  let deviceId = localStorage.getItem(DEVICE_ID_KEY);
-  if (!deviceId) {
-    deviceId = uuidv4();
-    localStorage.setItem(DEVICE_ID_KEY, deviceId);
+  try {
+    let deviceId = localStorage.getItem(DEVICE_ID_KEY);
+    if (!deviceId) {
+      deviceId = uuidv4();
+      localStorage.setItem(DEVICE_ID_KEY, deviceId);
+    }
+    return deviceId;
+  } catch {
+    if (!inMemoryDeviceId) inMemoryDeviceId = uuidv4();
+    return inMemoryDeviceId;
   }
-  return deviceId;
 }
 
 export function getStoredUser(): StoredUser | null {
@@ -26,12 +39,21 @@ export function getStoredUser(): StoredUser | null {
 
 export function storeUser(user: StoredUser): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  try {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  } catch {
+    // Onboarding/XP updates just won't persist across reloads — the store
+    // still holds the in-memory value for the rest of this session.
+  }
 }
 
 export function clearUser(): void {
   if (typeof window === "undefined") return;
-  localStorage.removeItem(USER_KEY);
+  try {
+    localStorage.removeItem(USER_KEY);
+  } catch {
+    // Nothing to clean up if storage was never writable in the first place.
+  }
 }
 
 export interface StoredUser {

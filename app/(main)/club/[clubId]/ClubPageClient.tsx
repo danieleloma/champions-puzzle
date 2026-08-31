@@ -31,6 +31,7 @@ import { DIFFICULTY_CONFIG, type Difficulty, type Puzzle } from "@/types/puzzle"
 import { useGameStore } from "@/store/game-store";
 import { prefetchPuzzles, getCachedPuzzles } from "@/lib/puzzle-cache";
 import { preloadImage } from "@/lib/preload-image";
+import { optimizedImageSrc, BOARD_IMAGE_WIDTH } from "@/lib/utils";
 
 // Matches CONTENT_W in app/(main)/layout.tsx
 const CONTENT_W = 648;
@@ -105,7 +106,11 @@ export default function ClubPageClient() {
   useEffect(() => {
     if (!isMobile || puzzles.length === 0) return;
     for (const puzzle of puzzles.slice(0, MOBILE_EAGER_PRELOAD_COUNT)) {
-      preloadImage(puzzle.image_url);
+      // Warm the exact optimized URL PuzzleBoard will actually request —
+      // preloading the raw source image is both wasted bandwidth (it's not
+      // the smaller, board-appropriate size) and a wasted preload (a
+      // different URL is a cache miss, so it wouldn't even help).
+      preloadImage(optimizedImageSrc(puzzle.image_url, BOARD_IMAGE_WIDTH));
       router.prefetch(`/play/${puzzle.id}`);
     }
   }, [isMobile, puzzles, router]);
@@ -125,7 +130,7 @@ export default function ClubPageClient() {
   // Warms the /play route chunk + full-resolution board image on hover/touch,
   // well before the click — the click itself then does no cold network work.
   function handlePuzzleHoverIntent(puzzle: Puzzle) {
-    preloadImage(puzzle.image_url);
+    preloadImage(optimizedImageSrc(puzzle.image_url, BOARD_IMAGE_WIDTH));
     router.prefetch(`/play/${puzzle.id}`);
   }
 

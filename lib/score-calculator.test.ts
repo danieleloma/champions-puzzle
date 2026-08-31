@@ -18,6 +18,22 @@ describe("calculateScore", () => {
     const score = calculateScore({ difficulty: "beginner", completionTimeMs: 10_000_000, moveCount: 500, hintsUsed: 5 });
     expect(score).toBeGreaterThanOrEqual(1);
   });
+
+  it("caps the move-efficiency bonus at its intended maximum even when moveCount is below tileCount", () => {
+    // 9-tile (beginner) board solved in fewer than 9 moves — legitimately
+    // possible since a single swap can place two tiles at once. Without the
+    // clamp this pushes moveEfficiency above perfectMoves and the bonus
+    // above its 200-point cap.
+    const withFewMoves = calculateScore({ difficulty: "beginner", completionTimeMs: 5_000, moveCount: 3, hintsUsed: 0 });
+    const atExactTileCount = calculateScore({ difficulty: "beginner", completionTimeMs: 5_000, moveCount: 9, hintsUsed: 0 });
+    expect(withFewMoves).toBe(atExactTileCount);
+  });
+
+  it("treats a negative completion time (e.g. a backward system-clock jump) as zero rather than as a bonus", () => {
+    const negative = calculateScore({ difficulty: "beginner", completionTimeMs: -5_000, moveCount: 9, hintsUsed: 0 });
+    const zero = calculateScore({ difficulty: "beginner", completionTimeMs: 0, moveCount: 9, hintsUsed: 0 });
+    expect(negative).toBe(zero);
+  });
 });
 
 describe("calculateXP", () => {
@@ -49,6 +65,10 @@ describe("formatTime", () => {
 
   it("zero-pads seconds and centiseconds", () => {
     expect(formatTime(65_050)).toBe("1:05.05");
+  });
+
+  it("clamps a negative duration to zero instead of rendering a negative string", () => {
+    expect(formatTime(-500)).toBe("0ms");
   });
 });
 

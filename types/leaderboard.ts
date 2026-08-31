@@ -22,24 +22,3 @@ export interface LeaderboardResponse {
   user_entry?: LeaderboardEntry;
   user_rank?: number;
 }
-
-export interface ScoreSubmission {
-  puzzle_id: string;
-  difficulty: Difficulty;
-  completion_time_ms: number;
-  move_count: number;
-  hints_used: number;
-  device_id: string;
-  session_token: string;
-  checksum: string;
-}
-
-export interface ScoreValidationResult {
-  valid: boolean;
-  reason?: string;
-  score: number;
-  xp_earned: number;
-  new_rank?: number;
-  is_personal_best: boolean;
-  achievements_unlocked: string[];
-}

@@ -1,6 +1,8 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import type { Difficulty } from "@/types/puzzle";
 import { DIFFICULTY_CONFIG } from "@/types/puzzle";
+import type { MoveLogEntry } from "@/lib/puzzle-engine";
+import { createTilesFromOrder, generateShuffleOrder, replayMoveLog } from "@/lib/puzzle-engine";
 
 const MIN_TIME_PER_MOVE_MS = 100;
 const SESSION_MAX_AGE_MS = 6 * 60 * 60 * 1000; // 6h — generous for a paused/backgrounded tab
@@ -25,10 +27,16 @@ const MINIMUM_TIMES_MS: Record<Difficulty, number> = {
 // client-reported time no longer passes validation on its own.
 
 export interface SessionTokenPayload {
-  puzzle_id:   string;
-  difficulty:  Difficulty;
-  device_id:   string;
-  issued_at:   number;
+  puzzle_id:      string;
+  difficulty:     Difficulty;
+  device_id:      string;
+  issued_at:      number;
+  /** The server-rolled starting shuffle — index i is tile `tile-i`'s starting
+   *  currentIndex. Embedded (not just referenced) so verification never
+   *  depends on separate server-side session storage, and so a submitted
+   *  move log can be replayed against the exact shuffle this token was
+   *  issued for. */
+  initial_order:  number[];
 }
 
 function getSecret(): string {
@@ -41,9 +49,16 @@ function sign(data: string): string {
   return createHmac("sha256", getSecret()).update(data).digest("base64url");
 }
 
-export function issueSessionToken(payload: SessionTokenPayload): string {
-  const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  return `${body}.${sign(body)}`;
+// Rolls a fresh, server-authoritative shuffle for the given difficulty and
+// signs it into a session token — called by POST /api/puzzle-sessions.
+export function issueSessionToken(
+  payload: Omit<SessionTokenPayload, "initial_order"> & { initial_order?: number[] }
+): { token: string; initial_order: number[] } {
+  const tileCount = DIFFICULTY_CONFIG[payload.difficulty].tileCount;
+  const initial_order = payload.initial_order ?? generateShuffleOrder(tileCount);
+  const full: SessionTokenPayload = { ...payload, initial_order };
+  const body = Buffer.from(JSON.stringify(full)).toString("base64url");
+  return { token: `${body}.${sign(body)}`, initial_order };
 }
 
 export function verifySessionToken(token: string): SessionTokenPayload | null {
@@ -62,7 +77,9 @@ export function verifySessionToken(token: string): SessionTokenPayload | null {
       typeof payload.puzzle_id !== "string" ||
       typeof payload.difficulty !== "string" ||
       typeof payload.device_id !== "string" ||
-      typeof payload.issued_at !== "number"
+      typeof payload.issued_at !== "number" ||
+      !Array.isArray(payload.initial_order) ||
+      !payload.initial_order.every((n: unknown) => typeof n === "number")
     ) {
       return null;
     }
@@ -79,17 +96,23 @@ export interface ScoreSubmission {
   puzzle_id:           string;
   difficulty:          Difficulty;
   completion_time_ms:  number;
-  move_count:           number;
-  hints_used:           number;
-  device_id:            string;
-  session_token:        string;
+  device_id:           string;
+  session_token:       string;
+  /** Ordered record of every user-driven move/hint — replayed server-side
+   *  against the session's server-issued shuffle to confirm the puzzle was
+   *  actually, legally solved. See lib/puzzle-engine.ts replayMoveLog. */
+  move_log:            MoveLogEntry[];
 }
 
 export function validateScore(submission: ScoreSubmission): {
   valid: boolean;
   reason?: string;
+  /** Authoritative counts derived from replaying move_log — use these for
+   *  scoring, never the client's own claimed numbers. */
+  move_count?: number;
+  hints_used?: number;
 } {
-  const { puzzle_id, difficulty, completion_time_ms, move_count, hints_used, device_id, session_token } =
+  const { puzzle_id, difficulty, completion_time_ms, device_id, session_token, move_log } =
     submission;
 
   const session = verifySessionToken(session_token);
@@ -120,15 +143,18 @@ export function validateScore(submission: ScoreSubmission): {
     };
   }
 
-  const { tileCount } = DIFFICULTY_CONFIG[difficulty];
-  if (move_count < tileCount - hints_used) {
-    return {
-      valid: false,
-      reason: "Move count too low — fewer moves than minimum required",
-    };
+  const { grid, hintLimit } = DIFFICULTY_CONFIG[difficulty];
+  const initialTiles = createTilesFromOrder(difficulty, session.initial_order);
+  const replay = replayMoveLog(initialTiles, Array.isArray(move_log) ? move_log : [], grid);
+
+  if (!replay.valid) {
+    return { valid: false, reason: replay.reason ?? "Move log failed replay verification" };
+  }
+  if (replay.hintCount > hintLimit) {
+    return { valid: false, reason: "Move log uses more hints than the difficulty allows" };
   }
 
-  const minTimeByMoves = move_count * MIN_TIME_PER_MOVE_MS;
+  const minTimeByMoves = replay.moveCount * MIN_TIME_PER_MOVE_MS;
   if (completion_time_ms < minTimeByMoves) {
     return {
       valid: false,
@@ -136,5 +162,5 @@ export function validateScore(submission: ScoreSubmission): {
     };
   }
 
-  return { valid: true };
+  return { valid: true, move_count: replay.moveCount, hints_used: replay.hintCount };
 }

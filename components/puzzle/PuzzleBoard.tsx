@@ -15,11 +15,13 @@ import {
 } from "@dnd-kit/core";
 import { useGSAP } from "@gsap/react";
 import { gsap } from "gsap";
+import { useShallow } from "zustand/react/shallow";
 import { useGameStore } from "@/store/game-store";
 import { DIFFICULTY_CONFIG } from "@/types/puzzle";
 import { getCompletionPercent, isAdjacent } from "@/lib/puzzle-engine";
 import type { PuzzleTile as PuzzleTileType } from "@/types/puzzle";
 import { playPickUp, playSnap, playMove, playComplete } from "@/lib/sounds";
+import { optimizedImageSrc, BOARD_IMAGE_WIDTH } from "@/lib/utils";
 
 // ── Visual constants — match PuzzleGridTiles exactly ─────────────────────────
 const TILE_GAP    = 2;   // px gap between tiles
@@ -38,18 +40,22 @@ interface GameTileProps {
   containerSize: number;
   isHighlighted: boolean;
   previewMode:   boolean;
+  /** True until the server-issued shuffle/session has replaced the board's
+   *  provisional local one — dragging before that would be replayed
+   *  server-side against the wrong starting tiles. See game-store.ts. */
+  boardLocked:   boolean;
   activeIndex:   number | null; // currentIndex of the tile being dragged, if any
   /** Lets the board reach this tile's DOM node directly (shake on invalid drop, victory stagger). */
   registerEl:    (id: string, el: HTMLDivElement | null) => void;
 }
 
-function GameTile({ tile, imageUrl, grid, containerSize, isHighlighted, previewMode, activeIndex, registerEl }: GameTileProps) {
+function GameTile({ tile, imageUrl, grid, containerSize, isHighlighted, previewMode, boardLocked, activeIndex, registerEl }: GameTileProps) {
   const tileVisual = (containerSize - (grid - 1) * TILE_GAP) / grid;
   const col = tile.currentIndex % grid;
   const row = Math.floor(tile.currentIndex / grid);
 
   const { attributes, listeners, setNodeRef: setDragRef, isDragging } =
-    useDraggable({ id: tile.id, disabled: tile.isLocked || previewMode });
+    useDraggable({ id: tile.id, disabled: tile.isLocked || previewMode || boardLocked });
 
   // Snap-on-place — a quick scale pop the moment a move (or hint) lands this
   // tile on its correct cell. Fires once per false->true transition, not on
@@ -72,7 +78,7 @@ function GameTile({ tile, imageUrl, grid, containerSize, isHighlighted, previewM
 
   const { setNodeRef: setDropRef, isOver } = useDroppable({
     id:       `drop-${tile.currentIndex}`,
-    disabled: previewMode || isBlocked,
+    disabled: previewMode || boardLocked || isBlocked,
   });
 
   // Border/glow states — inset shadow so it doesn't affect layout
@@ -132,8 +138,30 @@ interface PuzzleBoardProps {
 }
 
 export function PuzzleBoard({ imageUrl, size, showProgress = true }: PuzzleBoardProps) {
-  const { tiles, difficulty, moveTile, lastHintedTileId, previewMode, isCompleted } =
-    useGameStore();
+  // All tiles slice the same source image via background-position, so this
+  // only needs computing once per puzzle, not per tile.
+  const optimizedImageUrl = useMemo(() => optimizedImageSrc(imageUrl, BOARD_IMAGE_WIDTH), [imageUrl]);
+
+  // Scoped + shallow-compared so a tick elsewhere in the store (the timer
+  // updates elapsedMs up to 60x/sec — see useTimer) doesn't re-render the
+  // entire tile grid every frame; only an actual change to one of these
+  // fields does. See PERFORMANCE.md / the performance audit that flagged
+  // this as the main source of drag jank.
+  const { tiles, difficulty, moveTile, lastHintedTileId, previewMode, isCompleted, sessionToken, sessionError, retrySession } =
+    useGameStore(
+      useShallow((s) => ({
+        tiles: s.tiles,
+        difficulty: s.difficulty,
+        moveTile: s.moveTile,
+        lastHintedTileId: s.lastHintedTileId,
+        previewMode: s.previewMode,
+        isCompleted: s.isCompleted,
+        sessionToken: s.sessionToken,
+        sessionError: s.sessionError,
+        retrySession: s.retrySession,
+      }))
+    );
+  const boardLocked = !sessionToken;
 
   const boardRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState(size ?? 320);
@@ -286,15 +314,65 @@ export function PuzzleBoard({ imageUrl, size, showProgress = true }: PuzzleBoard
                 <GameTile
                   key={tile.id}
                   tile={tile}
-                  imageUrl={imageUrl}
+                  imageUrl={optimizedImageUrl}
                   grid={grid}
                   containerSize={containerSize}
                   isHighlighted={tile.id === lastHintedTileId}
                   previewMode={previewMode}
+                  boardLocked={boardLocked}
                   activeIndex={activeIndex}
                   registerEl={registerTileEl}
                 />
               ))
+            )}
+
+            {/* sessionError: the session-token fetch failed/timed out (see
+                game-store.ts requestSessionToken) — without this the board
+                just sits there permanently non-interactive with zero
+                explanation, which reads as a broken app. */}
+            {sessionError && (
+              <div
+                style={{
+                  position:       "absolute",
+                  inset:          0,
+                  // Explicit — GameTile sets zIndex:1 (or 50 while
+                  // dragging), which are positioned elements' own stacking
+                  // levels; without an explicit z-index here (which
+                  // defaults to a lower implicit level regardless of DOM
+                  // order) the tiles paint above this overlay and swallow
+                  // the Retry button's clicks.
+                  zIndex:         60,
+                  display:        "flex",
+                  flexDirection:  "column",
+                  alignItems:     "center",
+                  justifyContent: "center",
+                  gap:            12,
+                  background:     "rgba(15,15,16,0.85)",
+                  borderRadius:   TILE_RADIUS,
+                  textAlign:      "center",
+                  padding:        16,
+                }}
+              >
+                <p className="font-sans text-white/70 text-sm" style={{ margin: 0, maxWidth: 260 }}>
+                  Couldn&apos;t connect — check your connection and try again.
+                </p>
+                <button
+                  onClick={retrySession}
+                  className="font-sans"
+                  style={{
+                    padding:      "10px 20px",
+                    borderRadius: 999,
+                    border:       "none",
+                    background:   "#fff",
+                    color:        "#0f0f10",
+                    fontSize:     13,
+                    fontWeight:   600,
+                    cursor:       "pointer",
+                  }}
+                >
+                  Retry
+                </button>
+              </div>
             )}
           </div>
         </DndContext>
