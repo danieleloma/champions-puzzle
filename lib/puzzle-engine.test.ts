@@ -3,6 +3,7 @@ import {
   applyHint,
   createTiles,
   createTilesFromOrder,
+  generateShuffleOrder,
   getCompletionPercent,
   getTileAtIndex,
   isAdjacent,
@@ -25,6 +26,30 @@ describe("createTiles", () => {
     const current = tiles.map((t) => t.currentIndex).sort((a, b) => a - b);
     expect(correct).toEqual([...Array(25).keys()]);
     expect(current).toEqual([...Array(25).keys()]);
+  });
+
+  it("never starts a tile on its own correct square (no free pre-solved tiles)", () => {
+    // Run repeatedly — a plain Fisher-Yates shuffle leaves at least one
+    // fixed point in ~37% of shuffles, so this only meaningfully proves the
+    // derangement guarantee if checked across many independent shuffles.
+    for (let i = 0; i < 50; i++) {
+      const tiles = createTiles("beginner");
+      expect(tiles.some((t) => t.currentIndex === t.correctIndex)).toBe(false);
+    }
+  });
+});
+
+describe("generateShuffleOrder", () => {
+  it("always returns a derangement (zero fixed points) across repeated calls", () => {
+    for (let i = 0; i < 200; i++) {
+      const order = generateShuffleOrder(9);
+      expect(order.some((v, idx) => v === idx)).toBe(false);
+    }
+  });
+
+  it("still returns a valid 0..n-1 permutation", () => {
+    const order = generateShuffleOrder(16);
+    expect([...order].sort((a, b) => a - b)).toEqual([...Array(16).keys()]);
   });
 });
 

@@ -156,6 +156,29 @@ function TimerReadout({
   );
 }
 
+// ── PuzzleTitle ──────────────────────────────────────────────────────────────
+//
+// Forces a line break after the title's first two words (e.g. "World Cup" /
+// "Champions, 2026") instead of letting it wrap wherever the container
+// happens to run out of room, or sit as one long line when there's space.
+// Display-only — puzzle.title itself is left untouched, since the same
+// string also feeds the share caption, the leaderboard row, and the puzzle
+// card, none of which should pick up a forced break meant for this one
+// headline-sized spot. No-ops for titles that are already two words or
+// fewer.
+
+function PuzzleTitle({ title }: { title: string }) {
+  const words = title.trim().split(/\s+/);
+  if (words.length <= 2) return <>{title}</>;
+  return (
+    <>
+      {words.slice(0, 2).join(" ")}
+      <br />
+      {words.slice(2).join(" ")}
+    </>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function PlayPageClient() {
@@ -377,7 +400,7 @@ export default function PlayPageClient() {
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", width: "100%" }}>
               <div style={{ flex: "1 0 0", minWidth: 0, display: "flex", flexDirection: "column" }}>
                 <span style={{ fontFamily: "var(--font-boldonse), sans-serif", fontSize: 16, lineHeight: "normal", color: "#fff", wordBreak: "break-word", whiteSpace: "pre-wrap" }}>
-                  {puzzle.title}
+                  <PuzzleTitle title={puzzle.title} />
                 </span>
                 <span style={{ fontFamily: "var(--font-geist-mono), monospace", fontWeight: 500, fontSize: 15, letterSpacing: "-0.75px", color: cfg.color }}>
                   {cfg.label}
@@ -565,7 +588,7 @@ export default function PlayPageClient() {
                   whiteSpace:    "pre-wrap",
                 }}
               >
-                {puzzle.title}
+                <PuzzleTitle title={puzzle.title} />
               </span>
               {/* Geist Mono Medium 15px / #929498 / tracking -0.75px */}
               <span

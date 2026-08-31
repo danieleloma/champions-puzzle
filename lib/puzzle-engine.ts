@@ -16,16 +16,32 @@ function baseTiles(difficulty: Difficulty): PuzzleTile[] {
   }));
 }
 
-// A random permutation of 0..n-1 — index i is the currentIndex assigned to
-// tile `tile-i`. Used both for the client's instant local shuffle and (via
-// the server-signed session token) as the authoritative starting position a
-// submitted move log gets replayed against — see lib/anti-cheat.ts.
+// A random permutation of 0..n-1 with no fixed points (a derangement) —
+// index i is the currentIndex assigned to tile `tile-i`. Used both for the
+// client's instant local shuffle and (via the server-signed session token)
+// as the authoritative starting position a submitted move log gets replayed
+// against — see lib/anti-cheat.ts.
+//
+// A plain Fisher-Yates shuffle can, and regularly does, leave some tiles on
+// their own correct square by chance (about 1 in e ≈ 37% of shuffles have
+// at least one such tile for a 3x3 board) — a puzzle that opens already
+// showing "1/9 tiles, 11% complete" with zero moves made reads as broken,
+// even though it's mathematically a fair shuffle. Re-rolling until no tile
+// starts pre-solved fixes that without changing the difficulty of the
+// puzzle itself (a derangement is still a uniformly random shuffle among
+// all fixed-point-free permutations).
 export function generateShuffleOrder(tileCount: number): number[] {
-  const indices = Array.from({ length: tileCount }, (_, i) => i);
-  for (let i = indices.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [indices[i], indices[j]] = [indices[j], indices[i]];
-  }
+  if (tileCount <= 1) return Array.from({ length: tileCount }, (_, i) => i);
+
+  let indices: number[];
+  do {
+    indices = Array.from({ length: tileCount }, (_, i) => i);
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+  } while (indices.some((v, i) => v === i));
+
   return indices;
 }
 
